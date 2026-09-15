@@ -1,0 +1,19 @@
+{
+  "name": "PD Billing \u2014 Indian Products International Marketing",
+  "short_name": "PD Billing",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#122922",
+  "theme_color": "#122922",
+  "orientation": "any",
+  "description": "Offline-first PD Billing system based on Excel v6. Local data only; no cloud required.",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

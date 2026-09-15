@@ -1,0 +1,1340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PD Billing — Indian Products International Marketing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#241f1a;
+    --paper:#f9f4e8;
+    --paper-line:#e8dcc0;
+    --forest:#122922;
+    --forest-2:#1a3a30;
+    --brass:#b4863a;
+    --brass-light:#d9ad63;
+    --rust:#9c4a2e;
+    --ok:#3f6e4f;
+    --warn:#b4863a;
+    --bad:#9c4a2e;
+    --paid-bg:#e7efe6;
+    --unpaid-bg:#f6e8e1;
+    --partial-bg:#f8f1de;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--forest); color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{ font-family:'Fraunces',serif; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+
+  /* ---- shell ---- */
+  #app{ display:flex; min-height:100vh; }
+  #sidebar{
+    width:220px; flex-shrink:0; background:var(--forest);
+    background-image: radial-gradient(circle at 20px 20px, rgba(255,255,255,0.035) 1px, transparent 1px);
+    background-size: 18px 18px;
+    color:#eae3d2; padding:22px 14px; position:sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  #sidebar .brand{ display:flex; align-items:center; gap:10px; margin-bottom:26px; padding:0 6px;}
+  #sidebar .brand .tack{ width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 30%, var(--brass-light), var(--brass) 65%, #7a5c22 100%); box-shadow:0 1px 2px rgba(0,0,0,.4);}
+  #sidebar .brand-text{ line-height:1.15; }
+  #sidebar .brand-text .name{ font-family:'Fraunces',serif; font-size:16px; font-weight:600; color:#f4ead0;}
+  #sidebar .brand-text .sub{ font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:#9db3a6;}
+  .navgroup{ margin-bottom:18px; }
+  .navgroup .label{ font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:#77897d; padding:0 10px 6px; }
+  .navitem{
+    display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:7px; font-size:13.5px;
+    color:#d9d2bd; cursor:pointer; margin-bottom:2px; transition:background .12s;
+  }
+  .navitem:hover{ background:rgba(255,255,255,.06); }
+  .navitem.active{ background:rgba(180,134,58,.22); color:#f4ead0; font-weight:600; }
+  .navitem .dot{ width:5px; height:5px; border-radius:50%; background:var(--brass-light); flex-shrink:0; }
+  #sidebar .userbox{ margin-top:20px; padding:10px; border:1px dashed rgba(234,227,210,.25); border-radius:8px; font-size:12px; color:#c9c1a9;}
+  #sidebar .userbox b{ color:#f4ead0; }
+  #sidebar .logout{ margin-top:8px; font-size:11.5px; color:#d9ad63; cursor:pointer; text-decoration:underline; text-underline-offset:2px;}
+
+  #main{
+    flex:1; background:var(--paper);
+    background-image:
+      linear-gradient(var(--paper-line) 1px, transparent 1px);
+    background-size: 100% 34px;
+    background-position: 0 78px;
+    min-height:100vh; padding:26px 34px 60px;
+  }
+  .topbar{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:22px; padding-bottom:14px; border-bottom:2px solid var(--ink);}
+  .topbar h1{ font-size:26px; margin:0; font-weight:600; }
+  .topbar .stamp{ font-size:11px; color:#8a7f68; text-transform:uppercase; letter-spacing:.08em;}
+
+  .card{
+    background:#fffdf6; border:1px solid var(--paper-line); border-radius:10px; padding:18px 20px;
+    box-shadow:0 1px 0 rgba(36,31,26,.03);
+    position:relative;
+  }
+  .card::before, .card::after{
+    content:''; position:absolute; width:6px; height:6px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, var(--brass-light), var(--brass) 65%, #7a5c22 100%);
+    top:8px;
+  }
+  .card::before{ left:8px; } .card::after{ right:8px; }
+
+  .kpi-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin-bottom:26px;}
+  .kpi{ padding:16px 18px 14px; }
+  .kpi .label{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:#8a7f68; margin-bottom:6px;}
+  .kpi .value{ font-family:'Fraunces',serif; font-size:26px; font-weight:600; }
+  .kpi .value.bad{ color:var(--bad); } .kpi .value.ok{ color:var(--ok); } .kpi .value.warn{ color:var(--warn);}
+
+  table.ledger{ width:100%; border-collapse:collapse; font-size:13px; }
+  table.ledger thead th{
+    text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:#8a7f68;
+    border-bottom:1.5px solid var(--ink); padding:6px 10px; white-space:nowrap;
+  }
+  table.ledger tbody td{ padding:8px 10px; border-bottom:1px dashed var(--paper-line); vertical-align:middle;}
+  table.ledger tbody tr:hover{ background:rgba(180,134,58,.06); }
+  .pill{ display:inline-block; padding:2px 9px; border-radius:20px; font-size:11px; font-weight:600; }
+  .pill.paid{ background:var(--paid-bg); color:var(--ok); }
+  .pill.unpaid{ background:var(--unpaid-bg); color:var(--bad); }
+  .pill.partial{ background:var(--partial-bg); color:var(--warn); }
+  .pill.low{ background:var(--unpaid-bg); color:var(--bad); }
+  .pill.ok2{ background:var(--paid-bg); color:var(--ok); }
+
+  .btn{ display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:7px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid transparent; }
+  .btn-brass{ background:var(--brass); color:#fff; } .btn-brass:hover{ background:#9d7230; }
+  .btn-ghost{ background:transparent; border-color:var(--ink); color:var(--ink); }
+  .btn-ghost:hover{ background:rgba(36,31,26,.06); }
+  .btn-sm{ padding:4px 9px; font-size:11.5px; }
+  .btn-danger{ background:transparent; color:var(--bad); border-color:var(--bad); }
+
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:#8a7f68; margin-bottom:4px;}
+  .field input, .field select, .field textarea{
+    width:100%; padding:8px 10px; border:1px solid #cfc4a4; border-radius:6px; font-size:13.5px; font-family:inherit;
+    background:#fff;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{ outline:2px solid var(--brass-light); outline-offset:1px; border-color:var(--brass); }
+
+  .modal-backdrop{ position:fixed; inset:0; background:rgba(18,41,34,.55); display:flex; align-items:flex-start; justify-content:center; padding:40px 16px; z-index:50; overflow-y:auto;}
+  .modal{ background:#fffdf6; border-radius:12px; width:100%; max-width:640px; padding:22px 24px; border:1px solid var(--paper-line); box-shadow:0 20px 60px rgba(0,0,0,.35);}
+  .modal h3{ margin:0 0 16px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
+  .stitch{ border-top:1px dashed var(--paper-line); margin:16px 0; }
+
+  .tag-row{ display:flex; gap:6px; flex-wrap:wrap; }
+  .swatch{ width:14px;height:14px;border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,.15); vertical-align:-2px; margin-right:6px;}
+
+  /* login */
+  #loginwrap{ min-height:100vh; width:100%; display:flex; align-items:center; justify-content:center; background:var(--forest);
+    background-image: radial-gradient(circle at 20px 20px, rgba(255,255,255,0.035) 1px, transparent 1px); background-size:18px 18px;}
+  .login-card{ background:#fffdf6; border-radius:14px; padding:38px 36px; width:100%; max-width:420px; box-shadow:0 30px 80px rgba(0,0,0,.45);}
+  .staff-tile{ display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--paper-line); border-radius:9px; cursor:pointer; margin-bottom:9px; transition:.12s;}
+  .staff-tile:hover{ border-color:var(--brass); background:rgba(180,134,58,.06); }
+  .staff-avatar{ width:36px;height:36px;border-radius:50%; background:var(--forest-2); color:#f4ead0; display:flex; align-items:center; justify-content:center; font-weight:700; font-family:'Fraunces',serif; flex-shrink:0;}
+  .pin-dots{ display:flex; gap:10px; justify-content:center; margin:18px 0; }
+  .pin-dots .d{ width:14px; height:14px; border-radius:50%; border:1.5px solid var(--ink); }
+  .pin-dots .d.filled{ background:var(--ink); }
+  .keypad{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .keypad button{ padding:14px 0; font-size:17px; border-radius:9px; border:1px solid var(--paper-line); background:#fff; cursor:pointer; font-family:'Fraunces',serif;}
+  .keypad button:active{ background:var(--paper-line); }
+
+  .empty{ text-align:center; padding:50px 20px; color:#8a7f68; }
+  .empty .display{ font-size:19px; color:var(--ink); margin-bottom:6px;}
+
+  .doc{ background:#fffdf6; border:1px solid var(--paper-line); border-radius:10px; max-width:720px; margin:0 auto; padding:34px 38px; }
+  .doc-head{ display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid var(--ink); padding-bottom:14px; margin-bottom:18px;}
+  .doc-head .biz{ font-family:'Fraunces',serif; font-size:20px; font-weight:700;}
+  .doc-head .biz-sub{ font-size:11.5px; color:#8a7f68; margin-top:2px; }
+  .doc-head .doctitle{ text-align:right; }
+  .doc-head .doctitle .t{ font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:#8a7f68;}
+  .doc-head .doctitle .n{ font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700;}
+  .send-row{ display:flex; gap:10px; margin-top:22px; padding-top:16px; border-top:1px dashed var(--paper-line); }
+  a.send-btn{ text-decoration:none; padding:9px 16px; border-radius:7px; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:6px;}
+  a.wa{ background:#e7efe6; color:#256b3a; } a.mail{ background:#e2ebf5; color:#2b5a94;}
+
+  @media print{
+    #sidebar,.topbar,.no-print{ display:none !important; }
+    #main{ padding:0; background:none; }
+    body{ background:#fff; }
+  }
+  @media (max-width:820px){
+    #sidebar{ position:fixed; left:-240px; z-index:40; transition:left .18s; box-shadow:8px 0 30px rgba(0,0,0,.3);}
+    #sidebar.open{ left:0; }
+    #main{ padding:18px 16px 50px; }
+    .grid2{ grid-template-columns:1fr; }
+    #menu-toggle{ display:inline-flex !important; }
+    .topbar{ flex-direction:column; align-items:flex-start; gap:4px; }
+    .topbar .stamp{ font-size:9.5px; }
+    .kpi-grid{ grid-template-columns:1fr 1fr; }
+  }
+  #menu-toggle{ display:none; }
+  .scrollx{ overflow-x:auto; }
+</style>
+
+<style>
+.status-chip{display:inline-flex;align-items:center;gap:5px;font-size:10px;white-space:nowrap}.status-chip i{width:7px;height:7px;border-radius:50%;display:inline-block;background:#3b8b52}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}.modal-actions{display:flex;justify-content:flex-end;gap:10px}.image-slot{display:inline-flex;width:42px;height:42px;border:1px dashed #cfc4a4;border-radius:6px;align-items:center;justify-content:center;font-size:9px;color:#8a7f68}
+@media(max-width:820px){.status-chip{font-size:9px}.doc{padding:20px 16px}.field input,.field select,.field textarea{font-size:16px;min-height:44px}.btn{min-height:42px}.ledger{min-width:680px}}
+</style>
+<link rel="manifest" href="./manifest.json"><meta name="theme-color" content="#122922"></head>
+<body>
+<div id="loginwrap"></div>
+<div id="app" style="display:none;">
+  <div id="sidebar"></div>
+  <div id="main"></div>
+</div>
+
+<script>
+window.STORAGE_OK = !!(window.storage && window.storage.get);
+
+/* =========================================================
+   PD BILLING — data model + business logic
+   Mirrors: 07082026_Invoice_Inventory_Payment_System_v10.xlsx
+   ========================================================= */
+
+const BIZ = {
+  name: "PD - INDIAN PRODUCTS INTERNATIONAL MARKETING",
+  addr: "4, Rele Smruti Building, Behind Crystal Hardware, Next to Amit Dairy, S V Road, Malad West, Mumbai 400063",
+  phone: "919820518244",
+  email: "ipimindia@gmail.com",
+  gstin: "27ABCPD1234F1Z5",
+};
+
+const seedStaff = [
+  { id:"u1", name:"Owner", pin:"0000", role:"Owner" },
+  { id:"u2", name:"Hemant Desai", pin:"1234", role:"Sales" },
+];
+
+function seedDB(){
+  return {
+    seq: { cust:2, supp:2, item:6, invoice:1000, po:1000, pay:0, spay:0 },
+    customers: [
+      { id:"C001", name:"Sharma Interiors", phone:"919833011122", email:"sharma.interiors@example.com", address:"Andheri West, Mumbai", gstin:"27AASPS1111Q1Z0", openingBalance:2850, asOf:"2026-04-01" },
+      { id:"C002", name:"Mehta Furnishings", phone:"919833022233", email:"mehtafurnishings@example.com", address:"Borivali, Mumbai", gstin:"", openingBalance:0, asOf:"2026-04-01" },
+    ],
+    suppliers: [
+      { id:"S001", name:"Om Sai Foam Works", phone:"919920011122", email:"omsaifoam@example.com", address:"Vasai, Palghar", gstin:"27AASPS2222Q1Z0", openingBalance:820, asOf:"2026-04-01" },
+      { id:"S002", name:"Gujarat Fabric Mills", phone:"919920033344", email:"gujaratfabric@example.com", address:"Surat, Gujarat", gstin:"", openingBalance:0, asOf:"2026-04-01" },
+    ],
+    items: [
+      { id:"ITM001", name:"Sofa Set 3+2 Seater", category:"Sofas", unitCost:18000, unitPrice:25999, opening:6, reorder:3, swatch:"#7a5c22" },
+      { id:"ITM002", name:"Recliner Chair (Single)", category:"Sofas", unitCost:9500, unitPrice:14999, opening:8, reorder:3, swatch:"#9c4a2e" },
+      { id:"ITM003", name:"Curtain Fabric (per meter)", category:"Curtains", unitCost:180, unitPrice:320, opening:120, reorder:30, swatch:"#3f6e4f" },
+      { id:"ITM004", name:"Cushion Cover Set (5pc)", category:"Accessories", unitCost:250, unitPrice:499, opening:40, reorder:10, swatch:"#b4863a" },
+      { id:"ITM005", name:"Dining Table Set 6-Seater", category:"Tables", unitCost:22000, unitPrice:32999, opening:3, reorder:2, swatch:"#4a4238" },
+      { id:"ITM006", name:"Bed Headboard Cushion Panel", category:"Accessories", unitCost:3200, unitPrice:5499, opening:5, reorder:2, swatch:"#5c3a5c" },
+    ],
+    invoices: [],      // {no, date, custId, taxPct, dueDate}
+    salesLog: [],       // {invoiceNo, itemId, qty, price}
+    purchases: [],      // {no, date, suppId, taxPct, dueDate}
+    purchaseLog: [],    // {poNo, itemId, qty, cost}
+    payments: [],        // {id, date, invoiceNo, amount, mode}
+    supplierPayments: [], // {id, date, poNo, amount, mode}
+  };
+}
+
+let DB = null;
+let STAFF = null;
+let CURRENT_USER = null;
+let VIEW = "dashboard";
+let PIN_BUFFER = "";
+let SELECTED_STAFF = null;
+
+async function loadAll(){
+  if (window.STORAGE_OK){
+    try {
+      const s = await window.storage.get("pdbilling-staff-v1", true);
+      STAFF = JSON.parse(s.value);
+    } catch(e){ STAFF = seedStaff; await window.storage.set("pdbilling-staff-v1", JSON.stringify(STAFF), true).catch(()=>{}); }
+    try {
+      const d = await window.storage.get("pdbilling-data-v1", true);
+      DB = JSON.parse(d.value);
+    } catch(e){ DB = seedDB(); await window.storage.set("pdbilling-data-v1", JSON.stringify(DB), true).catch(()=>{}); }
+  } else {
+    STAFF = seedStaff;
+    DB = seedDB();
+  }
+}
+
+async function saveDB(){
+  if (window.STORAGE_OK){
+    try { await window.storage.set("pdbilling-data-v1", JSON.stringify(DB), true); }
+    catch(e){ console.error("save failed", e); }
+  }
+}
+
+/* ---------- derived calculations (mirrors the workbook formulas) ---------- */
+
+function invoiceLines(no){ return DB.salesLog.filter(l=>l.invoiceNo===no); }
+function poLines(no){ return DB.purchaseLog.filter(l=>l.poNo===no); }
+
+function invoiceSubtotal(no){ return invoiceLines(no).reduce((s,l)=>s+l.qty*l.price,0); }
+function invoiceTax(inv){ return round2(invoiceSubtotal(inv.no) * (inv.taxPct/100)); }
+function invoiceTotal(inv){ return invoiceSubtotal(inv.no) + invoiceTax(inv); }
+function invoicePaid(no){ return DB.payments.filter(p=>p.invoiceNo===no).reduce((s,p)=>s+p.amount,0); }
+function invoiceBalance(inv){ return round2(invoiceTotal(inv) - invoicePaid(inv.no)); }
+function invoiceStatus(inv){
+  const bal = invoiceBalance(inv), paid = invoicePaid(inv.no);
+  if (bal<=0.005) return "Paid";
+  if (paid===0) return "Unpaid";
+  return "Partial";
+}
+
+function poSubtotal(no){ return poLines(no).reduce((s,l)=>s+l.qty*l.cost,0); }
+function poTax(po){ return round2(poSubtotal(po.no) * (po.taxPct/100)); }
+function poTotal(po){ return poSubtotal(po.no) + poTax(po); }
+function poPaid(no){ return DB.supplierPayments.filter(p=>p.poNo===no).reduce((s,p)=>s+p.amount,0); }
+function poBalance(po){ return round2(poTotal(po) - poPaid(po.no)); }
+function poStatus(po){
+  const bal = poBalance(po), paid = poPaid(po.no);
+  if (bal<=0.005) return "Paid";
+  if (paid===0) return "Unpaid";
+  return "Partial";
+}
+
+function stockOf(itemId){
+  const item = DB.items.find(i=>i.id===itemId);
+  if (!item) return 0;
+  const purchased = DB.purchaseLog.filter(l=>l.itemId===itemId).reduce((s,l)=>s+l.qty,0);
+  const sold = DB.salesLog.filter(l=>l.itemId===itemId).reduce((s,l)=>s+l.qty,0);
+  return item.opening + purchased - sold;
+}
+
+function customerOutstanding(custId){
+  const cust = DB.customers.find(c=>c.id===custId);
+  const opening = cust ? cust.openingBalance : 0;
+  const fromInvoices = DB.invoices.filter(i=>i.custId===custId).reduce((s,i)=>s+Math.max(0,invoiceBalance(i)),0);
+  return round2(opening + fromInvoices);
+}
+function supplierPayable(suppId){
+  const supp = DB.suppliers.find(s=>s.id===suppId);
+  const opening = supp ? supp.openingBalance : 0;
+  const fromPOs = DB.purchases.filter(p=>p.suppId===suppId).reduce((s,p)=>s+Math.max(0,poBalance(p)),0);
+  return round2(opening + fromPOs);
+}
+
+function round2(n){ return Math.round((n+Number.EPSILON)*100)/100; }
+function fmt(n){ return "₹" + (Math.round((n||0)*100)/100).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2}); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+
+function nextInvoiceNo(){ DB.seq.invoice+=1; return "INV-"+DB.seq.invoice; }
+function nextPONo(){ DB.seq.po+=1; return "PO-"+DB.seq.po; }
+function nextCustId(){ DB.seq.cust+=1; return "C"+String(DB.seq.cust).padStart(3,"0"); }
+function nextSuppId(){ DB.seq.supp+=1; return "S"+String(DB.seq.supp).padStart(3,"0"); }
+function nextItemId(){ DB.seq.item+=1; return "ITM"+String(DB.seq.item).padStart(3,"0"); }
+function nextPayId(){ DB.seq.pay+=1; return "PMT-"+DB.seq.pay; }
+function nextSPayId(){ DB.seq.spay+=1; return "SPMT-"+DB.seq.spay; }
+
+/* =========================================================
+   LOGIN
+   ========================================================= */
+
+function renderLogin(){
+  const wrap = document.getElementById("loginwrap");
+  if (!SELECTED_STAFF){
+    wrap.innerHTML = `
+      <div class="login-card">
+        <div style="text-align:center;margin-bottom:22px;">
+          <div class="display" style="font-size:22px;font-weight:700;">PD Billing</div>
+          <div style="font-size:12px;color:#8a7f68;letter-spacing:.05em;text-transform:uppercase;margin-top:4px;">Indian Products International Marketing · Mumbai</div>
+        </div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#8a7f68;margin-bottom:10px;">Who is using the app?</div>
+        ${STAFF.map(s=>`
+          <div class="staff-tile" onclick="pickStaff('${s.id}')">
+            <div class="staff-avatar">${s.name.split(" ").map(w=>w[0]).slice(0,2).join("")}</div>
+            <div>
+              <div style="font-weight:600;">${s.name}</div>
+              <div style="font-size:11.5px;color:#8a7f68;">${s.role}</div>
+            </div>
+          </div>
+        `).join("")}
+      </div>`;
+    return;
+  }
+  const staff = STAFF.find(s=>s.id===SELECTED_STAFF);
+  wrap.innerHTML = `
+    <div class="login-card" style="text-align:center;">
+      <div class="staff-avatar" style="margin:0 auto 10px;width:52px;height:52px;font-size:18px;">${staff.name.split(" ").map(w=>w[0]).slice(0,2).join("")}</div>
+      <div style="font-weight:600;font-size:16px;">${staff.name}</div>
+      <div style="font-size:11.5px;color:#8a7f68;margin-bottom:6px;">Enter PIN</div>
+      <div class="pin-dots">${[0,1,2,3].map(i=>`<div class="d ${i<PIN_BUFFER.length?'filled':''}"></div>`).join("")}</div>
+      <div id="pinerr" style="color:var(--bad);font-size:12px;height:16px;margin-bottom:6px;"></div>
+      <div class="keypad">
+        ${[1,2,3,4,5,6,7,8,9].map(n=>`<button onclick="pinPress('${n}')">${n}</button>`).join("")}
+        <button onclick="pinBack('staff')" style="color:#8a7f68;font-size:13px;">Back</button>
+        <button onclick="pinPress('0')">0</button>
+        <button onclick="pinBack('del')" style="color:#8a7f68;font-size:13px;">⌫</button>
+      </div>
+    </div>`;
+}
+function pickStaff(id){ SELECTED_STAFF=id; PIN_BUFFER=""; renderLogin(); }
+function pinBack(kind){
+  if (kind==='staff'){ SELECTED_STAFF=null; PIN_BUFFER=""; renderLogin(); return; }
+  PIN_BUFFER = PIN_BUFFER.slice(0,-1); renderLogin();
+}
+function pinPress(d){
+  if (PIN_BUFFER.length>=4) return;
+  PIN_BUFFER += d;
+  renderLogin();
+  if (PIN_BUFFER.length===4){
+    const staff = STAFF.find(s=>s.id===SELECTED_STAFF);
+    if (staff.pin===PIN_BUFFER){
+      CURRENT_USER = staff;
+      boot();
+    } else {
+      setTimeout(()=>{
+        document.getElementById("pinerr").textContent = "Incorrect PIN — try again";
+        PIN_BUFFER=""; renderLogin();
+      }, 220);
+    }
+  }
+}
+function logout(){ CURRENT_USER=null; SELECTED_STAFF=null; PIN_BUFFER=""; document.getElementById("app").style.display="none"; document.getElementById("loginwrap").style.display="flex"; renderLogin(); }
+
+function boot(){
+  document.getElementById("loginwrap").style.display="none";
+  document.getElementById("app").style.display="flex";
+  renderShell();
+  go("dashboard");
+}
+
+/* =========================================================
+   SHELL / ROUTER
+   ========================================================= */
+
+const NAV = [
+  { group:"Overview", items:[["dashboard","Dashboard"]] },
+  { group:"Selling", items:[["customers","Customers"],["invoices","Invoice Register"],["sales-log","Sales Log"],["payments","Payments"]] },
+  { group:"Buying", items:[["suppliers","Suppliers"],["purchases","Purchase Register"],["purchase-log","Purchase Log"],["supplier-payments","Supplier Payments"]] },
+  { group:"Stock", items:[["inventory","Inventory"]] },
+  { group:"Documents", items:[["doc-invoice","Invoice"],["doc-po","Purchase Order"],["doc-receipt","Payment Receipt"],["doc-outstanding","Outstanding Statement"],["doc-supp-outstanding","Supplier Outstanding"]] },
+  { group:"Reports", items:[["report-sales","Sales Report"],["report-purchase","Purchase Report"],["report-aging","Aging Report"]] },
+];
+
+function renderShell(){
+  const sb = document.getElementById("sidebar");
+  sb.innerHTML = `
+    <div class="brand"><div class="tack"></div>
+      <div class="brand-text"><div class="name">PD Billing</div><div class="sub">Malad West, Mumbai</div></div>
+    </div>
+    ${NAV.map(g=>`
+      <div class="navgroup">
+        <div class="label">${g.group}</div>
+        ${g.items.map(([id,label])=>`<div class="navitem" data-nav="${id}" onclick="go('${id}')"><span class="dot"></span>${label}</div>`).join("")}
+      </div>`).join("")}
+    <div class="userbox">Signed in as<br><b>${CURRENT_USER.name}</b> · ${CURRENT_USER.role}</div>
+    <div class="logout" onclick="logout()">Switch user</div>
+  `;
+}
+
+function markActive(id){
+  document.querySelectorAll(".navitem").forEach(el=>el.classList.toggle("active", el.dataset.nav===id));
+}
+
+function go(id){
+  VIEW = id;
+  markActive(id);
+  const main = document.getElementById("main");
+  main.innerHTML = renderView(id);
+  window.scrollTo(0,0);
+}
+
+function renderView(id){
+  const titles = Object.fromEntries(NAV.flatMap(g=>g.items));
+  const header = `<div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span id="menu-toggle" class="no-print" style="cursor:pointer;font-size:20px;" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</span>
+      <h1>${titles[id]||id}</h1>
+    </div>
+    <div class="stamp">${BIZ.name}</div>
+  </div>`;
+  let body = "";
+  if (id==="dashboard") body = viewDashboard();
+  else if (id==="customers") body = viewParties("customers");
+  else if (id==="suppliers") body = viewParties("suppliers");
+  else if (id==="inventory") body = viewInventory();
+  else if (id==="invoices") body = viewInvoiceRegister();
+  else if (id==="sales-log") body = viewSalesLog();
+  else if (id==="payments") body = viewPayments("payments");
+  else if (id==="purchases") body = viewPurchaseRegister();
+  else if (id==="purchase-log") body = viewPurchaseLog();
+  else if (id==="supplier-payments") body = viewPayments("supplier-payments");
+  else if (id==="doc-invoice") body = viewDoc("invoice");
+  else if (id==="doc-po") body = viewDoc("po");
+  else if (id==="doc-receipt") body = viewDoc("receipt");
+  else if (id==="doc-outstanding") body = viewDoc("outstanding");
+  else if (id==="doc-supp-outstanding") body = viewDoc("supp-outstanding");
+  else if (id==="report-sales") body = viewReportSales();
+  else if (id==="report-purchase") body = viewReportPurchase();
+  else if (id==="report-aging") body = viewReportAging();
+  return header + body;
+}
+
+/* =========================================================
+   DASHBOARD
+   ========================================================= */
+
+function viewDashboard(){
+  const totalInvoices = DB.invoices.length;
+  const totalSales = DB.invoices.reduce((s,i)=>s+invoiceTotal(i),0);
+  const totalReceived = DB.payments.reduce((s,p)=>s+p.amount,0);
+  const totalOutstanding = DB.customers.reduce((s,c)=>s+customerOutstanding(c.id),0);
+  const overdue = DB.invoices.filter(i=>invoiceBalance(i)>0.005 && i.dueDate && i.dueDate<todayISO()).length;
+  const lowStock = DB.items.filter(it=>stockOf(it.id)<=it.reorder).length;
+  const totalPurchases = DB.purchases.reduce((s,p)=>s+poTotal(p),0);
+  const totalPayable = DB.suppliers.reduce((s,su)=>s+supplierPayable(su.id),0);
+  const invAtCost = DB.items.reduce((s,it)=>s+stockOf(it.id)*it.unitCost,0);
+  const invAtRetail = DB.items.reduce((s,it)=>s+stockOf(it.id)*it.unitPrice,0);
+
+  const kpi = (label,val,cls="") => `<div class="card kpi"><div class="label">${label}</div><div class="value ${cls}">${val}</div></div>`;
+
+  return `
+    <div class="kpi-grid">
+      ${kpi("Total Invoices", totalInvoices)}
+      ${kpi("Total Sales (incl. tax)", fmt(totalSales))}
+      ${kpi("Total Received", fmt(totalReceived), "ok")}
+      ${kpi("Total Outstanding (customers)", fmt(totalOutstanding), totalOutstanding>0?"bad":"")}
+      ${kpi("Overdue Invoices", overdue, overdue>0?"bad":"ok")}
+      ${kpi("Items to Reorder", lowStock, lowStock>0?"warn":"ok")}
+      ${kpi("Total Purchases (incl. tax)", fmt(totalPurchases))}
+      ${kpi("Total Payable (to suppliers)", fmt(totalPayable), totalPayable>0?"warn":"")}
+      ${kpi("Inventory Value (at cost)", fmt(invAtCost))}
+      ${kpi("Inventory Value (at retail)", fmt(invAtRetail))}
+    </div>
+    <div class="card" style="font-size:12.5px;color:#8a7f68;">Tip: open <b>Inventory</b> and sort by Stock Status to see everything at or below its reorder level.</div>
+  `;
+}
+
+/* =========================================================
+   CUSTOMERS / SUPPLIERS  (mirrored)
+   ========================================================= */
+
+function viewParties(kind){
+  const isCust = kind==="customers";
+  const list = isCust ? DB.customers : DB.suppliers;
+  const label = isCust ? "Customer" : "Supplier";
+  const rows = list.map(p=>{
+    const bal = isCust ? customerOutstanding(p.id) : supplierPayable(p.id);
+    const waMsg = encodeURIComponent(`Hello ${p.name}, this is ${BIZ.name}.`);
+    return `<tr>
+      <td class="mono">${p.id}</td>
+      <td>${p.name}</td>
+      <td>${p.phone||"—"}</td>
+      <td>${p.email||"—"}</td>
+      <td>${fmt(p.openingBalance)}</td>
+      <td style="font-weight:700;${bal>0?'color:var(--bad)':''}">${fmt(bal)}</td>
+      <td class="no-print">
+        ${p.phone?`<a class="btn btn-sm btn-ghost" style="text-decoration:none;" href="https://wa.me/${p.phone}?text=${waMsg}" target="_blank">Chat</a>`:""}
+        ${p.email?`<a class="btn btn-sm btn-ghost" style="text-decoration:none;" href="mailto:${p.email}">Email</a>`:""}
+        <span class="btn btn-sm btn-ghost" onclick="editParty('${kind}','${p.id}')">Edit</span>
+      </td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;" class="no-print">
+        <div style="font-size:12px;color:#8a7f68;">${list.length} ${label.toLowerCase()}${list.length===1?'':'s'}</div>
+        <span class="btn btn-brass btn-sm" onclick="editParty('${kind}',null)">+ Add ${label}</span>
+      </div>
+      <div class="scrollx"><table class="ledger"><thead><tr>
+        <th>ID</th><th>Name</th><th>WhatsApp</th><th>Email</th><th>Opening Bal</th><th>${isCust?'Outstanding':'Payable'}</th><th></th>
+      </tr></thead><tbody>${rows || `<tr><td colspan="7" class="empty">No ${label.toLowerCase()}s yet.</td></tr>`}</tbody></table></div>
+    </div>`;
+}
+
+function editParty(kind, id){
+  const isCust = kind==="customers";
+  const list = isCust ? DB.customers : DB.suppliers;
+  const p = id ? list.find(x=>x.id===id) : { id:null, name:"",phone:"",email:"",address:"",gstin:"",openingBalance:0, asOf:todayISO() };
+  openModal(`${id?'Edit':'Add'} ${isCust?'Customer':'Supplier'}`, `
+    <div class="grid2">
+      <div class="field"><label>Name</label><input id="f-name" value="${p.name}"></div>
+      <div class="field"><label>WhatsApp (country code + number)</label><input id="f-phone" value="${p.phone}" placeholder="919876543210"></div>
+      <div class="field"><label>Email</label><input id="f-email" value="${p.email}"></div>
+      <div class="field"><label>GSTIN</label><input id="f-gstin" value="${p.gstin||''}"></div>
+      <div class="field" style="grid-column:1/3;"><label>Address</label><input id="f-address" value="${p.address||''}"></div>
+      <div class="field"><label>Opening Balance</label><input id="f-ob" type="number" value="${p.openingBalance}"></div>
+      <div class="field"><label>As of Date</label><input id="f-asof" type="date" value="${p.asOf}"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      ${id?`<span class="btn btn-danger" onclick="deleteParty('${kind}','${id}')">Delete</span>`:""}
+      <span class="btn btn-ghost" onclick="closeModal()">Cancel</span>
+      <span class="btn btn-brass" onclick="saveParty('${kind}','${id||''}')">Save</span>
+    </div>
+  `);
+}
+async function saveParty(kind, id){
+  const isCust = kind==="customers";
+  const list = isCust ? DB.customers : DB.suppliers;
+  const data = {
+    name: val("f-name"), phone: val("f-phone"), email: val("f-email"),
+    gstin: val("f-gstin"), address: val("f-address"),
+    openingBalance: parseFloat(val("f-ob"))||0, asOf: val("f-asof"),
+  };
+  if (!data.name){ alert("Name is required."); return; }
+  if (id){ Object.assign(list.find(x=>x.id===id), data); }
+  else { data.id = isCust? nextCustId() : nextSuppId(); list.push(data); }
+  await saveDB(); closeModal(); go(VIEW);
+}
+async function deleteParty(kind, id){
+  if (!confirm("Delete this record? This cannot be undone.")) return;
+  const isCust = kind==="customers";
+  const list = isCust ? DB.customers : DB.suppliers;
+  const idx = list.findIndex(x=>x.id===id);
+  if (idx>-1) list.splice(idx,1);
+  await saveDB(); closeModal(); go(VIEW);
+}
+
+/* =========================================================
+   INVENTORY
+   ========================================================= */
+
+function viewInventory(){
+  const rows = DB.items.map(it=>{
+    const stock = stockOf(it.id);
+    const low = stock<=it.reorder;
+    return `<tr>
+      <td class="mono">${it.id}</td>
+      <td><span class="swatch" style="background:${it.swatch}"></span>${it.name}</td>
+      <td>${it.category}</td>
+      <td>${fmt(it.unitCost)}</td>
+      <td>${fmt(it.unitPrice)}</td>
+      <td style="font-weight:700;">${stock}</td>
+      <td>${it.reorder}</td>
+      <td><span class="pill ${low?'low':'ok2'}">${low?'Reorder':'OK'}</span></td>
+      <td class="no-print"><span class="btn btn-sm btn-ghost" onclick="editItem('${it.id}')">Edit</span></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;" class="no-print">
+        <div style="font-size:12px;color:#8a7f68;">Current Stock = Opening + Purchased − Sold, live.</div>
+        <span class="btn btn-brass btn-sm" onclick="editItem(null)">+ Add Item</span>
+      </div>
+      <div class="scrollx"><table class="ledger"><thead><tr>
+        <th>Code</th><th>Item</th><th>Category</th><th>Unit Cost</th><th>Unit Price</th><th>Stock</th><th>Reorder Lvl</th><th>Status</th><th></th>
+      </tr></thead><tbody>${rows || `<tr><td colspan="9" class="empty">No items yet.</td></tr>`}</tbody></table></div>
+    </div>`;
+}
+function editItem(id){
+  const it = id ? DB.items.find(i=>i.id===id) : { id:null,name:"",category:"",unitCost:0,unitPrice:0,opening:0,reorder:5,swatch:"#b4863a" };
+  openModal(`${id?'Edit':'Add'} Item`, `
+    <div class="grid2">
+      <div class="field" style="grid-column:1/3;"><label>Item Name</label><input id="f-name" value="${it.name}"></div>
+      <div class="field"><label>Category</label><input id="f-cat" value="${it.category}"></div>
+      <div class="field"><label>Swatch Color</label><input id="f-swatch" type="color" value="${it.swatch}"></div>
+      <div class="field"><label>Unit Cost</label><input id="f-cost" type="number" value="${it.unitCost}"></div>
+      <div class="field"><label>Unit Price</label><input id="f-price" type="number" value="${it.unitPrice}"></div>
+      <div class="field"><label>${id?'Opening Stock (fixed)':'Opening Stock'}</label><input id="f-opening" type="number" value="${it.opening}" ${id?'disabled':''}></div>
+      <div class="field"><label>Reorder Level</label><input id="f-reorder" type="number" value="${it.reorder}"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      ${id?`<span class="btn btn-danger" onclick="deleteItem('${id}')">Delete</span>`:""}
+      <span class="btn btn-ghost" onclick="closeModal()">Cancel</span>
+      <span class="btn btn-brass" onclick="saveItem('${id||''}')">Save</span>
+    </div>
+  `);
+}
+async function saveItem(id){
+  const data = {
+    name: val("f-name"), category: val("f-cat"), swatch: val("f-swatch"),
+    unitCost: parseFloat(val("f-cost"))||0, unitPrice: parseFloat(val("f-price"))||0,
+    reorder: parseFloat(val("f-reorder"))||0,
+  };
+  if (!data.name){ alert("Item name is required."); return; }
+  if (id){ Object.assign(DB.items.find(i=>i.id===id), data); }
+  else { data.id = nextItemId(); data.opening = parseFloat(val("f-opening"))||0; DB.items.push(data); }
+  await saveDB(); closeModal(); go(VIEW);
+}
+async function deleteItem(id){
+  if (!confirm("Delete this item?")) return;
+  const idx = DB.items.findIndex(i=>i.id===id);
+  if (idx>-1) DB.items.splice(idx,1);
+  await saveDB(); closeModal(); go(VIEW);
+}
+
+/* =========================================================
+   INVOICE REGISTER  +  SALES LOG
+   ========================================================= */
+
+function viewInvoiceRegister(){
+  const rows = [...DB.invoices].sort((a,b)=>b.no.localeCompare(a.no,undefined,{numeric:true})).map(inv=>{
+    const cust = DB.customers.find(c=>c.id===inv.custId);
+    const status = invoiceStatus(inv);
+    return `<tr>
+      <td class="mono">${inv.no}</td>
+      <td>${inv.date}</td>
+      <td>${cust?cust.name:'—'}</td>
+      <td>${fmt(invoiceSubtotal(inv.no))}</td>
+      <td>${inv.taxPct}%</td>
+      <td>${fmt(invoiceTotal(inv))}</td>
+      <td>${fmt(invoicePaid(inv.no))}</td>
+      <td style="font-weight:700;">${fmt(invoiceBalance(inv))}</td>
+      <td><span class="pill ${status.toLowerCase()}">${status}</span></td>
+      <td class="no-print"><span class="btn btn-sm btn-ghost" onclick="editInvoice('${inv.no}')">Edit</span></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;" class="no-print">
+        <div style="font-size:12px;color:#8a7f68;">Invoice No fills in automatically. Add line items on the Sales Log.</div>
+        <span class="btn btn-brass btn-sm" onclick="editInvoice(null)">+ New Invoice</span>
+      </div>
+      <div class="scrollx"><table class="ledger"><thead><tr>
+        <th>Invoice No</th><th>Date</th><th>Customer</th><th>Subtotal</th><th>Tax</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th></th>
+      </tr></thead><tbody>${rows || `<tr><td colspan="10" class="empty">No invoices yet.</td></tr>`}</tbody></table></div>
+    </div>`;
+}
+
+function editInvoice(no){
+  const inv = no ? DB.invoices.find(i=>i.no===no) : { no:null, date:todayISO(), custId:DB.customers[0]?.id||"", taxPct:18, dueDate:todayISO() };
+  openModal(`${no?'Edit':'New'} Invoice ${no?('· '+no):''}`, `
+    <div class="grid2">
+      <div class="field"><label>Customer</label><select id="f-cust">${DB.customers.map(c=>`<option value="${c.id}" ${c.id===inv.custId?'selected':''}>${c.name}</option>`).join("")}</select></div>
+      <div class="field"><label>Invoice Date</label><input id="f-date" type="date" value="${inv.date}"></div>
+      <div class="field"><label>Tax %</label><input id="f-tax" type="number" value="${inv.taxPct}"></div>
+      <div class="field"><label>Due Date</label><input id="f-due" type="date" value="${inv.dueDate}"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      ${no?`<span class="btn btn-danger" onclick="deleteInvoice('${no}')">Delete</span>`:""}
+      <span class="btn btn-ghost" onclick="closeModal()">Cancel</span>
+      <span class="btn btn-brass" onclick="saveInvoice('${no||''}')">Save</span>
+    </div>
+  `);
+}
+async function saveInvoice(no){
+  const data = { date: val("f-date"), custId: val("f-cust"), taxPct: parseFloat(val("f-tax"))||0, dueDate: val("f-due") };
+  if (no){ Object.assign(DB.invoices.find(i=>i.no===no), data); }
+  else { data.no = nextInvoiceNo(); DB.invoices.push(data); }
+  await saveDB(); closeModal(); go(VIEW);
+}
+async function deleteInvoice(no){
+  if (!confirm(`Delete ${no}? Its sales-log lines and payments will also be removed.`)) return;
+  DB.invoices = DB.invoices.filter(i=>i.no!==no);
+  DB.salesLog = DB.salesLog.filter(l=>l.invoiceNo!==no);
+  DB.payments = DB.payments.filter(p=>p.invoiceNo!==no);
+  await saveDB(); closeModal(); go(VIEW);
+}
+
+function viewSalesLog(){
+  const rows = [...DB.salesLog].reverse().map((l,revIdx)=>{
+    const idx = DB.salesLog.length-1-revIdx;
+    const item = DB.items.find(i=>i.id===l.itemId);
+    return `<tr>
+      <td class="mono">${l.invoiceNo}</td>
+      <td>${item?item.name:'—'}</td>
+      <td>${l.qty}</td>
+      <td>${fmt(l.price)}</td>
+      <td style="font-weight:700;">${fmt(l.qty*l.price)}</td>
+      <td class="no-print"><span class="btn btn-sm btn-ghost" onclick="deleteSaleLine(${idx})">Remove</span></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;" class="no-print">
+        <div style="font-size:12px;color:#8a7f68;">One row per item sold. Reduces Inventory stock automatically.</div>
+        <span class="btn btn-brass btn-sm" onclick="addSaleLine()">+ Add Line</span>
+      </div>
+      <div class="scrollx"><table class="ledger"><thead><tr>
+        <th>Invoice No</th><th>Item</th><th>Qty</th><th>Unit Price</th><th>Line Total</th><th></th>
+      </tr></thead><tbody>${rows || `<tr><td colspan="6" class="empty">No sales lines yet.</td></tr>`}</tbody></table></div>
+    </div>`;
+}
+function addSaleLine(){
+  if (!DB.invoices.length){ alert("Create an invoice first (Invoice Register)."); return; }
+  if (!DB.items.length){ alert("Add an item first (Inventory)."); return; }
+  openModal("Add Sales Log Line", `
+    <div class="grid2">
+      <div class="field"><label>Invoice No</label><select id="f-inv">${DB.invoices.map(i=>`<option value="${i.no}">${i.no}</option>`).join("")}</select></div>
+      <div class="field"><label>Item</label><select id="f-item" onchange="fillPrice()">${DB.items.map(i=>`<option value="${i.id}" data-price="${i.unitPrice}">${i.name}</option>`).join("")}</select></div>
+      <div class="field"><label>Qty</label><input id="f-qty" type="number" value="1" min="1"></div>
+      <div class="field"><label>Unit Price</label><input id="f-price" type="number" value="${DB.items[0]?.unitPrice||0}"></div>
+    </div>
+    <div style="font-size:11.5px;color:#8a7f68;margin-bottom:14px;">Available stock: <b id="f-stockhint">${stockOf(DB.items[0]?.id)}</b></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <span class="btn btn-ghost" onclick="closeModal()">Cancel</span>
+      <span class="btn btn-brass" onclick="saveSaleLine()">Add</span>
+    </div>
+  `);
+  document.getElementById("f-item").addEventListener("change", fillPrice);
+}
+function fillPrice(){
+  const sel = document.getElementById("f-item");
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById("f-price").value = opt.dataset.price;
+  document.getElementById("f-stockhint").textContent = stockOf(opt.value);
+}
+async function saveSaleLine(){
+  const itemId = val("f-item"), qty = parseFloat(val("f-qty"))||0;
+  const avail = stockOf(itemId);
+  if (qty>avail && !confirm(`Only ${avail} in stock — record this sale anyway (stock will go negative)?`)) return;
+  DB.salesLog.push({ invoiceNo: val("f-inv"), itemId, qty, price: parseFloat(val("f-price"))||0 });
+  await saveDB(); closeModal(); go(VIEW);
+}
+async function deleteSaleLine(idx){
+  if (!confirm("Remove this line?")) return;
+  DB.salesLog.splice(idx,1);
+  await saveDB(); closeModal(); go(VIEW);
+}
+
+/* =========================================================
+   PAYMENTS  (customer)  /  SUPPLIER PAYMENTS  — shared renderer
+   ========================================================= */
+
+function viewPayments(kind){
+  const isCust = kind==="payments";
+  const list = isCust ? DB.payments : DB.supplierPayments;
+  const refs = isCust ? DB.invoices.map(i=>i.no) : DB.purchases.map(p=>p.no);
+  const refLabel = isCust ? "Invoice No" : "PO No";
+  const refKey = isCust ? "invoiceNo" : "poNo";
+  const rows = [...list].reverse().map((p,revIdx)=>{
+    const idx = list.length-1-revIdx;
+    return `<tr>
+      <td class="mono">${p.id}</td><td>${p.date}</td><td class="mono">${p[refKey]}</td>
+      <td style="font-weight:700;">${fmt(p.amount)}</td><td>${p.mode}</td>
+      <td class="no-print"><span class="btn btn-sm btn-ghost" onclick="deletePayment('${kind}',${idx})">Remove</span></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;" class="no-print">
+        <div style="font-size:12px;color:#8a7f68;">Log every ${isCust?'payment received':'payment you make'} against a ${refLabel}. Balances update automatically.</div>
+        <span class="btn btn-brass btn-sm" onclick="addPayment('${kind}')">+ Log Payment</span>
+      </div>
+      <div class="scrollx"><table class="ledger"><thead><tr>
+        <th>Payment ID</th><th>Date</th><th>${refLabel}</th><th>Amount</th><th>Mode</th><th></th>
+      </tr></thead><tbody>${rows || `<tr><td colspan="6" class="empty">No payments logged yet.</td></tr>`}</tbody></table></div>
+    </div>
+    ${!refs.length?`<div class="card" style="margin-top:12px;font-size:12.5px;color:#8a7f68;">Create ${isCust?'an invoice':'a purchase order'} first.</div>`:""}
+  `;
+}
+function addPayment(kind){
+  const isCust = kind==="payments";
+  const refs = isCust ? DB.invoices : DB.purchases;
+  if (!refs.length){ alert(`Create ${isCust?'an invoice':'a purchase order'} first.`); return; }
+  openModal(`Log ${isCust?'Payment Received':'Supplier Payment'}`, `
+    <div class="grid2">
+      <div class="field"><label>${isCust?'Invoice No':'PO No'}</label><select id="f-ref">${refs.map(r=>`<option value="${r.no}">${r.no} — ${fmt(isCust?invoiceBalance(r):poBalance(r))} due</option>`).join("")}</select></div>
+      <div class="field"><label>Date</label><input id="f-date" type="date" value="${todayISO()}"></div>
+      <div class="field"><label>Amount</label><input id="f-amount" type="number" value="0"></div>
+      <div class="field"><label>Mode</label><select id="f-mode"><option>UPI</option><option>Bank Transfer</option><option>Cash</option><option>Cheque</option><option>Card</option></select></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <span class="btn btn-ghost" onclick="closeModal()">Cancel</span>
+      <span class="btn btn-brass" onclick="savePayment('${kind}')">Save</span>
+    </div>
+  `);
+}
+async function savePayment(kind){
+  const isCust = kind==="payments";
+  const amount = parseFloat(val("f-amount"))||0;
+  if (amount<=0){ alert("Enter an amount greater than zero."); return; }
+  const rec = { id: isCust?nextPayId():nextSPayId(), date: val("f-date"), amount, mode: val("f-mode") };
+  if (isCust){ rec.invoiceNo = val("f-ref"); DB.payments.push(rec); }
+  else { rec.poNo = val("f-ref"); DB.supplierPayments.push(rec); }
+  await saveDB(); closeModal(); go(VIEW);
+}
+async function deletePayment(kind, idx){
+  if (!confirm("Remove this payment?")) return;
+  (kind==="payments"?DB.payments:DB.supplierPayments).splice(idx,1);
+  await saveDB(); closeModal(); go(VIEW);
+}
+
+/* =========================================================
+   PURCHASE REGISTER  +  PURCHASE LOG  (mirrors selling side)
+   ========================================================= */
+
+function viewPurchaseRegister(){
+  const rows = [...DB.purchases].sort((a,b)=>b.no.localeCompare(a.no,undefined,{numeric:true})).map(po=>{
+    const supp = DB.suppliers.find(s=>s.id===po.suppId);
+    const status = poStatus(po);
+    return `<tr>
+      <td class="mono">${po.no}</td><td>${po.date}</td><td>${supp?supp.name:'—'}</td>
+      <td>${fmt(poSubtotal(po.no))}</td><td>${po.taxPct}%</td><td>${fmt(poTotal(po))}</td>
+      <td>${fmt(poPaid(po.no))}</td><td style="font-weight:700;">${fmt(poBalance(po))}</td>
+      <td><span class="pill ${status.toLowerCase()}">${status}</span></td>
+      <td class="no-print"><span class="btn btn-sm btn-ghost" onclick="editPO('${po.no}')">Edit</span></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;" class="no-print">
+        <div style="font-size:12px;color:#8a7f68;">PO No fills in automatically. Add line items on the Purchase Log.</div>
+        <span class="btn btn-brass btn-sm" onclick="editPO(null)">+ New Purchase Order</span>
+      </div>
+      <div class="scrollx"><table class="ledger"><thead><tr>
+        <th>PO No</th><th>Date</th><th>Supplier</th><th>Subtotal</th><th>Tax</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th></th>
+      </tr></thead><tbody>${rows || `<tr><td colspan="10" class="empty">No purchase orders yet.</td></tr>`}</tbody></table></div>
+    </div>`;
+}
+function editPO(no){
+  const po = no ? DB.purchases.find(p=>p.no===no) : { no:null, date:todayISO(), suppId:DB.suppliers[0]?.id||"", taxPct:18, dueDate:todayISO() };
+  openModal(`${no?'Edit':'New'} Purchase Order ${no?('· '+no):''}`, `
+    <div class="grid2">
+      <div class="field"><label>Supplier</label><select id="f-supp">${DB.suppliers.map(s=>`<option value="${s.id}" ${s.id===po.suppId?'selected':''}>${s.name}</option>`).join("")}</select></div>
+      <div class="field"><label>Date</label><input id="f-date" type="date" value="${po.date}"></div>
+      <div class="field"><label>Tax %</label><input id="f-tax" type="number" value="${po.taxPct}"></div>
+      <div class="field"><label>Due Date</label><input id="f-due" type="date" value="${po.dueDate}"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      ${no?`<span class="btn btn-danger" onclick="deletePO('${no}')">Delete</span>`:""}
+      <span class="btn btn-ghost" onclick="closeModal()">Cancel</span>
+      <span class="btn btn-brass" onclick="savePO('${no||''}')">Save</span>
+    </div>
+  `);
+}
+async function savePO(no){
+  const data = { date: val("f-date"), suppId: val("f-supp"), taxPct: parseFloat(val("f-tax"))||0, dueDate: val("f-due") };
+  if (no){ Object.assign(DB.purchases.find(p=>p.no===no), data); }
+  else { data.no = nextPONo(); DB.purchases.push(data); }
+  await saveDB(); closeModal(); go(VIEW);
+}
+async function deletePO(no){
+  if (!confirm(`Delete ${no}? Its purchase-log lines and payments will also be removed.`)) return;
+  DB.purchases = DB.purchases.filter(p=>p.no!==no);
+  DB.purchaseLog = DB.purchaseLog.filter(l=>l.poNo!==no);
+  DB.supplierPayments = DB.supplierPayments.filter(p=>p.poNo!==no);
+  await saveDB(); closeModal(); go(VIEW);
+}
+
+function viewPurchaseLog(){
+  const rows = [...DB.purchaseLog].reverse().map((l,revIdx)=>{
+    const idx = DB.purchaseLog.length-1-revIdx;
+    const item = DB.items.find(i=>i.id===l.itemId);
+    return `<tr>
+      <td class="mono">${l.poNo}</td><td class="mono">${l.lotId||'—'}</td><td>${item?item.name:'—'}</td><td>${l.qty}</td>
+      <td>${fmt(l.cost)}</td><td style="font-weight:700;">${fmt(l.qty*l.cost)}</td>
+      <td class="no-print"><span class="btn btn-sm btn-ghost" onclick="deletePurchaseLine(${idx})">Remove</span></td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;" class="no-print">
+        <div style="font-size:12px;color:#8a7f68;">One row per item bought. Increases Inventory stock automatically.</div>
+        <span class="btn btn-brass btn-sm" onclick="addPurchaseLine()">+ Add Line</span>
+      </div>
+      <div class="scrollx"><table class="ledger"><thead><tr>
+        <th>PO No</th><th>Lot ID</th><th>Item</th><th>Qty</th><th>Unit Cost</th><th>Line Total</th><th></th>
+      </tr></thead><tbody>${rows || `<tr><td colspan="7" class="empty">No purchase lines yet.</td></tr>`}</tbody></table></div>
+    </div>`;
+}
+function addPurchaseLine(){
+  if (!DB.purchases.length){ alert("Create a purchase order first."); return; }
+  if (!DB.items.length){ alert("Add an item first (Inventory)."); return; }
+  openModal("Add Purchase Log Line", `
+    <div class="grid2">
+      <div class="field"><label>PO No</label><select id="f-po">${DB.purchases.map(p=>`<option value="${p.no}">${p.no}</option>`).join("")}</select></div>
+      <div class="field"><label>Item</label><select id="f-item" onchange="fillCost()">${DB.items.map(i=>`<option value="${i.id}" data-cost="${i.unitCost}">${i.name}</option>`).join("")}</select></div>
+      <div class="field"><label>Qty</label><input id="f-qty" type="number" value="1" min="1"></div>
+      <div class="field"><label>Unit Cost</label><input id="f-cost" type="number" value="${DB.items[0]?.unitCost||0}"></div>
+      <div class="field"><label>Lot ID</label><input id="f-lot" value="" placeholder="Auto: PO No + line number"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <span class="btn btn-ghost" onclick="closeModal()">Cancel</span>
+      <span class="btn btn-brass" onclick="savePurchaseLine()">Add</span>
+    </div>
+  `);
+  document.getElementById("f-item").addEventListener("change", fillCost);
+}
+function fillCost(){
+  const sel = document.getElementById("f-item");
+  document.getElementById("f-cost").value = sel.options[sel.selectedIndex].dataset.cost;
+}
+async function savePurchaseLine(){
+  const poNo=val("f-po"), itemId=val("f-item"), qty=parseFloat(val("f-qty"))||0, cost=parseFloat(val("f-cost"))||0;
+  if(qty<=0){alert("Quantity must be greater than zero.");return;}
+  const po=DB.purchases.find(p=>p.no===poNo);
+  const lotId=val("f-lot") || `${poNo}-${DB.purchaseLog.filter(x=>x.poNo===poNo).length+1}`;
+  if(DB.purchaseLog.some(x=>x.lotId===lotId)){alert(`Lot ID ${lotId} already exists. Enter a unique Lot ID.`);return;}
+  DB.purchaseLog.push({ poNo, itemId, qty, cost, lotId, supplierId:po?.suppId||"" });
+  await saveDB(); closeModal(); go(VIEW);
+}
+async function deletePurchaseLine(idx){
+  if (!confirm("Remove this line?")) return;
+  DB.purchaseLog.splice(idx,1);
+  await saveDB(); closeModal(); go(VIEW);
+}
+
+/* =========================================================
+   PRINTABLE DOCUMENTS
+   ========================================================= */
+
+function viewDoc(type){
+  const cfg = {
+    invoice: { title:"Tax Invoice", pick:"Invoice No", options:DB.invoices.map(i=>i.no) },
+    po: { title:"Purchase Order", pick:"PO No", options:DB.purchases.map(p=>p.no) },
+    receipt: { title:"Payment Receipt", pick:"Payment ID", options:DB.payments.map(p=>p.id) },
+    outstanding: { title:"Outstanding Statement", pick:"Customer", options:DB.customers.map(c=>c.id) },
+    "supp-outstanding": { title:"Supplier Outstanding", pick:"Supplier", options:DB.suppliers.map(s=>s.id) },
+  }[type];
+  const picker = `
+    <div class="card no-print" style="margin-bottom:18px;max-width:420px;">
+      <div class="field" style="margin-bottom:10px;"><label>${cfg.pick}</label>
+        <select id="doc-picker" onchange="renderDocBody('${type}')">
+          <option value="">— select —</option>
+          ${cfg.options.map(o=>`<option value="${o}">${labelFor(type,o)}</option>`).join("")}
+        </select>
+      </div>
+      <span class="btn btn-ghost btn-sm" onclick="window.print()">Print / Save PDF</span>
+    </div>`;
+  return picker + `<div id="doc-body"></div>`;
+}
+function labelFor(type,id){
+  if (type==="outstanding"){ const c=DB.customers.find(x=>x.id===id); return c?c.name:id; }
+  if (type==="supp-outstanding"){ const s=DB.suppliers.find(x=>x.id===id); return s?s.name:id; }
+  return id;
+}
+
+function renderDocBody(type){
+  const id = document.getElementById("doc-picker").value;
+  const el = document.getElementById("doc-body");
+  if (!id){ el.innerHTML=""; return; }
+  if (type==="invoice") el.innerHTML = docInvoice(id);
+  else if (type==="po") el.innerHTML = docPO(id);
+  else if (type==="receipt") el.innerHTML = docReceipt(id);
+  else if (type==="outstanding") el.innerHTML = docOutstanding(id);
+  else if (type==="supp-outstanding") el.innerHTML = docSuppOutstanding(id);
+}
+
+function docHead(title, no, dateLabel, date){
+  return `<div class="doc-head">
+    <div><div class="biz">${BIZ.name}</div><div class="biz-sub">${BIZ.addr}<br>GSTIN: ${BIZ.gstin} · ${BIZ.email}</div></div>
+    <div class="doctitle"><div class="t">${title}</div><div class="n">${no}</div><div style="font-size:11.5px;color:#8a7f68;margin-top:4px;">${dateLabel}: ${date}</div></div>
+  </div>`;
+}
+function sendRow(name, phone, email, msg){
+  return `<div class="send-row no-print">
+    ${phone?`<a class="send-btn wa" href="https://wa.me/${phone}?text=${encodeURIComponent(msg)}" target="_blank">Send via WhatsApp</a>`:""}
+    ${email?`<a class="send-btn mail" href="mailto:${email}?subject=${encodeURIComponent(msg.split('\n')[0])}&body=${encodeURIComponent(msg)}">Send via Email</a>`:""}
+  </div>`;
+}
+
+function docInvoice(no){
+  const inv = DB.invoices.find(i=>i.no===no); if(!inv) return "";
+  const cust = DB.customers.find(c=>c.id===inv.custId);
+  const lines = invoiceLines(no).map(l=>{
+    const item = DB.items.find(i=>i.id===l.itemId);
+    return `<tr><td>${item?item.name:'—'}</td><td>${l.qty}</td><td>${fmt(l.price)}</td><td>${fmt(l.qty*l.price)}</td></tr>`;
+  }).join("");
+  const status = invoiceStatus(inv);
+  const msg = `${BIZ.name}\nInvoice ${no}\nDate: ${inv.date}\nAmount: ${fmt(invoiceTotal(inv))}\nBalance Due: ${fmt(invoiceBalance(inv))}\nDue: ${inv.dueDate}\nThank you for your business!`;
+  return `<div class="doc">
+    ${docHead("Tax Invoice", no, "Date", inv.date)}
+    <div style="font-size:12.5px;margin-bottom:16px;"><b>Bill To:</b> ${cust?cust.name:'—'}<br>${cust?cust.address:''}<br>${cust&&cust.gstin?`GSTIN: ${cust.gstin}`:''}</div>
+    <table class="ledger"><thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${lines||'<tr><td colspan="4" class="empty">No line items yet.</td></tr>'}</tbody></table>
+    <div class="stitch"></div>
+    <div style="max-width:280px;margin-left:auto;font-size:13.5px;">
+      <div style="display:flex;justify-content:space-between;padding:3px 0;"><span>Subtotal</span><span>${fmt(invoiceSubtotal(no))}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:3px 0;"><span>Tax (${inv.taxPct}%)</span><span>${fmt(invoiceTax(inv))}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;font-weight:700;border-top:1.5px solid var(--ink);"><span>Total</span><span>${fmt(invoiceTotal(inv))}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:3px 0;color:#8a7f68;"><span>Paid</span><span>${fmt(invoicePaid(no))}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:3px 0;font-weight:700;"><span>Balance Due</span><span>${fmt(invoiceBalance(inv))}</span></div>
+      <div style="margin-top:8px;"><span class="pill ${status.toLowerCase()}">${status}</span></div>
+    </div>
+    ${sendRow(cust?.name, cust?.phone, cust?.email, msg)}
+  </div>`;
+}
+
+function docPO(no){
+  const po = DB.purchases.find(p=>p.no===no); if(!po) return "";
+  const supp = DB.suppliers.find(s=>s.id===po.suppId);
+  const lines = poLines(no).map(l=>{
+    const item = DB.items.find(i=>i.id===l.itemId);
+    return `<tr><td>${item?item.name:'—'}</td><td>${l.qty}</td><td>${fmt(l.cost)}</td><td>${fmt(l.qty*l.cost)}</td></tr>`;
+  }).join("");
+  const msg = `${BIZ.name}\nPurchase Order ${no}\nDate: ${po.date}\nAmount: ${fmt(poTotal(po))}`;
+  return `<div class="doc">
+    ${docHead("Purchase Order", no, "Date", po.date)}
+    <div style="font-size:12.5px;margin-bottom:16px;"><b>Supplier:</b> ${supp?supp.name:'—'}<br>${supp?supp.address:''}</div>
+    <table class="ledger"><thead><tr><th>Item</th><th>Qty</th><th>Cost</th><th>Amount</th></tr></thead><tbody>${lines||'<tr><td colspan="4" class="empty">No line items yet.</td></tr>'}</tbody></table>
+    <div class="stitch"></div>
+    <div style="max-width:280px;margin-left:auto;font-size:13.5px;">
+      <div style="display:flex;justify-content:space-between;padding:3px 0;"><span>Subtotal</span><span>${fmt(poSubtotal(no))}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:3px 0;"><span>Tax (${po.taxPct}%)</span><span>${fmt(poTax(po))}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;font-weight:700;border-top:1.5px solid var(--ink);"><span>Total</span><span>${fmt(poTotal(po))}</span></div>
+    </div>
+    ${sendRow(supp?.name, supp?.phone, supp?.email, msg)}
+  </div>`;
+}
+
+function docReceipt(id){
+  const p = DB.payments.find(x=>x.id===id); if(!p) return "";
+  const inv = DB.invoices.find(i=>i.no===p.invoiceNo);
+  const cust = inv ? DB.customers.find(c=>c.id===inv.custId) : null;
+  const msg = `${BIZ.name}\nPayment Receipt ${id}\nAgainst ${p.invoiceNo}\nAmount: ${fmt(p.amount)}\nMode: ${p.mode}\nDate: ${p.date}\nThank you!`;
+  return `<div class="doc">
+    ${docHead("Payment Receipt", id, "Date", p.date)}
+    <div style="font-size:13.5px;line-height:2;">
+      <div><b>Received From:</b> ${cust?cust.name:'—'}</div>
+      <div><b>Against Invoice:</b> ${p.invoiceNo}</div>
+      <div><b>Amount:</b> ${fmt(p.amount)}</div>
+      <div><b>Mode:</b> ${p.mode}</div>
+      ${inv?`<div><b>Remaining Balance:</b> ${fmt(invoiceBalance(inv))}</div>`:""}
+    </div>
+    ${sendRow(cust?.name, cust?.phone, cust?.email, msg)}
+  </div>`;
+}
+
+function docOutstanding(custId){
+  const cust = DB.customers.find(c=>c.id===custId); if(!cust) return "";
+  const invs = DB.invoices.filter(i=>i.custId===custId && invoiceBalance(i)>0.005);
+  const rows = invs.map(i=>`<tr><td class="mono">${i.no}</td><td>${i.date}</td><td>${i.dueDate}</td><td>${fmt(invoiceTotal(i))}</td><td style="font-weight:700;">${fmt(invoiceBalance(i))}</td></tr>`).join("");
+  const total = customerOutstanding(custId);
+  const msg = `${BIZ.name}\nOutstanding Statement for ${cust.name}\nTotal Outstanding: ${fmt(total)}\nKindly arrange payment at your earliest convenience.`;
+  return `<div class="doc">
+    ${docHead("Outstanding Statement", cust.id, "As of", todayISO())}
+    <div style="font-size:12.5px;margin-bottom:16px;"><b>Customer:</b> ${cust.name}<br>${cust.address}</div>
+    ${cust.openingBalance?`<div style="font-size:12.5px;margin-bottom:10px;">Opening Balance (as of ${cust.asOf}): <b>${fmt(cust.openingBalance)}</b></div>`:""}
+    <table class="ledger"><thead><tr><th>Invoice</th><th>Date</th><th>Due</th><th>Total</th><th>Balance</th></tr></thead><tbody>${rows||'<tr><td colspan="5" class="empty">No open invoices.</td></tr>'}</tbody></table>
+    <div class="stitch"></div>
+    <div style="font-size:16px;font-weight:700;text-align:right;">Total Outstanding: ${fmt(total)}</div>
+    ${sendRow(cust.name, cust.phone, cust.email, msg)}
+  </div>`;
+}
+
+function docSuppOutstanding(suppId){
+  const supp = DB.suppliers.find(s=>s.id===suppId); if(!supp) return "";
+  const pos = DB.purchases.filter(p=>p.suppId===suppId && poBalance(p)>0.005);
+  const rows = pos.map(p=>`<tr><td class="mono">${p.no}</td><td>${p.date}</td><td>${p.dueDate}</td><td>${fmt(poTotal(p))}</td><td style="font-weight:700;">${fmt(poBalance(p))}</td></tr>`).join("");
+  const total = supplierPayable(suppId);
+  const msg = `${BIZ.name}\nSupplier Outstanding — ${supp.name}\nTotal Payable: ${fmt(total)}`;
+  return `<div class="doc">
+    ${docHead("Supplier Outstanding", supp.id, "As of", todayISO())}
+    <div style="font-size:12.5px;margin-bottom:16px;"><b>Supplier:</b> ${supp.name}<br>${supp.address}</div>
+    ${supp.openingBalance?`<div style="font-size:12.5px;margin-bottom:10px;">Opening Balance (as of ${supp.asOf}): <b>${fmt(supp.openingBalance)}</b></div>`:""}
+    <table class="ledger"><thead><tr><th>PO</th><th>Date</th><th>Due</th><th>Total</th><th>Balance</th></tr></thead><tbody>${rows||'<tr><td colspan="5" class="empty">No open purchase orders.</td></tr>'}</tbody></table>
+    <div class="stitch"></div>
+    <div style="font-size:16px;font-weight:700;text-align:right;">Total Payable: ${fmt(total)}</div>
+    ${sendRow(supp.name, supp.phone, supp.email, msg)}
+  </div>`;
+}
+
+/* =========================================================
+   REPORTS
+   ========================================================= */
+
+function viewReportSales(){
+  const rows = DB.items.map(it=>{
+    const lines = DB.salesLog.filter(l=>l.itemId===it.id);
+    const qty = lines.reduce((s,l)=>s+l.qty,0);
+    const revenue = lines.reduce((s,l)=>s+l.qty*l.price,0);
+    const cost = qty*it.unitCost;
+    return { name:it.name, qty, revenue, cost, profit:revenue-cost };
+  }).filter(r=>r.qty>0).sort((a,b)=>b.revenue-a.revenue);
+  const rowsHtml = rows.map(r=>`<tr><td>${r.name}</td><td>${r.qty}</td><td>${fmt(r.revenue)}</td><td>${fmt(r.cost)}</td><td style="font-weight:700;">${fmt(r.profit)}</td></tr>`).join("");
+  return `<div class="card"><div class="scrollx"><table class="ledger"><thead><tr><th>Item</th><th>Qty Sold</th><th>Revenue</th><th>Est. Cost</th><th>Est. Gross Profit</th></tr></thead>
+    <tbody>${rowsHtml || `<tr><td colspan="5" class="empty">No sales recorded yet.</td></tr>`}</tbody></table></div></div>`;
+}
+
+function viewReportPurchase(){
+  const rows = DB.items.map(it=>{
+    const lines = DB.purchaseLog.filter(l=>l.itemId===it.id);
+    const qty = lines.reduce((s,l)=>s+l.qty,0);
+    const cost = lines.reduce((s,l)=>s+l.qty*l.cost,0);
+    return { name:it.name, qty, cost };
+  }).filter(r=>r.qty>0).sort((a,b)=>b.cost-a.cost);
+  const rowsHtml = rows.map(r=>`<tr><td>${r.name}</td><td>${r.qty}</td><td style="font-weight:700;">${fmt(r.cost)}</td></tr>`).join("");
+  return `<div class="card"><div class="scrollx"><table class="ledger"><thead><tr><th>Item</th><th>Qty Purchased</th><th>Total Cost</th></tr></thead>
+    <tbody>${rowsHtml || `<tr><td colspan="3" class="empty">No purchases recorded yet.</td></tr>`}</tbody></table></div></div>`;
+}
+
+function viewReportAging(){
+  const custRows = DB.invoices.filter(i=>invoiceBalance(i)>0.005).map(i=>{
+    const cust = DB.customers.find(c=>c.id===i.custId);
+    const days = i.dueDate ? Math.max(0, daysBetween(i.dueDate, todayISO())) : 0;
+    const bucket = days===0?"Current":days<=30?"1–30 days":days<=60?"31–60 days":days<=90?"61–90 days":"90+ days";
+    return { ref:i.no, name:cust?cust.name:'—', due:i.dueDate, bal:invoiceBalance(i), days, bucket };
+  }).sort((a,b)=>b.days-a.days);
+  const suppRows = DB.purchases.filter(p=>poBalance(p)>0.005).map(p=>{
+    const supp = DB.suppliers.find(s=>s.id===p.suppId);
+    const days = p.dueDate ? Math.max(0, daysBetween(p.dueDate, todayISO())) : 0;
+    const bucket = days===0?"Current":days<=30?"1–30 days":days<=60?"31–60 days":days<=90?"61–90 days":"90+ days";
+    return { ref:p.no, name:supp?supp.name:'—', due:p.dueDate, bal:poBalance(p), days, bucket };
+  }).sort((a,b)=>b.days-a.days);
+
+  const table = (rows, refLabel) => `<div class="scrollx"><table class="ledger"><thead><tr><th>${refLabel}</th><th>Party</th><th>Due Date</th><th>Days Overdue</th><th>Bucket</th><th>Balance</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td class="mono">${r.ref}</td><td>${r.name}</td><td>${r.due}</td><td>${r.days}</td><td><span class="pill ${r.days>60?'unpaid':r.days>0?'partial':'ok2'}">${r.bucket}</span></td><td style="font-weight:700;">${fmt(r.bal)}</td></tr>`).join("") || `<tr><td colspan="6" class="empty">Nothing overdue.</td></tr>`}</tbody></table></div>`;
+
+  return `
+    <div class="card" style="margin-bottom:18px;">
+      <h3 style="margin-top:0;">Customers owing you</h3>
+      ${table(custRows, "Invoice")}
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;">You owe suppliers</h3>
+      ${table(suppRows, "PO")}
+    </div>`;
+}
+
+/* =========================================================
+   MODAL + small DOM helpers
+   ========================================================= */
+
+function val(id){ return document.getElementById(id).value; }
+function openModal(title, bodyHtml){
+  const wrap = document.createElement("div");
+  wrap.className = "modal-backdrop";
+  wrap.id = "modal-backdrop";
+  wrap.innerHTML = `<div class="modal"><h3>${title}</h3>${bodyHtml}</div>`;
+  wrap.addEventListener("mousedown", (e)=>{ if(e.target===wrap) closeModal(); });
+  document.body.appendChild(wrap);
+}
+function closeModal(){ const m=document.getElementById("modal-backdrop"); if(m) m.remove(); }
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeModal(); });
+
+/* =========================================================
+   MOBILE MENU + BOOT
+   ========================================================= */
+
+(async function init(){
+  await loadAll();
+  renderLogin();
+})();
+
+
+/* Excel v6 line-level tax/lot/dispatch compatibility */
+function invoiceTax(inv){return round2(invoiceLines(inv.no).reduce((s,l)=>s+n(l.qty)*n(l.price)*n(l.taxPct??inv.taxPct)/100,0))}
+function invoiceTotal(inv){return round2(invoiceSubtotal(inv.no)+invoiceTax(inv))}
+function poTax(po){return round2(poLines(po.no).reduce((s,l)=>s+n(l.qty)*n(l.cost)*n(l.taxPct??po.taxPct)/100,0))}
+function poTotal(po){return round2(poSubtotal(po.no)+poTax(po))}
+function editInvoice(no){const inv=no?DB.invoices.find(i=>i.no===no):{no:null,date:todayISO(),custId:DB.customers[0]?.id||'',taxPct:0,dueDate:todayISO()};openModal(`${no?'Edit':'New'} Invoice ${no?'· '+no:''}`,`<div class="grid2"><div class="field"><label>Customer</label><select id="f-cust">${DB.customers.map(c=>`<option value="${c.id}" ${c.id===inv.custId?'selected':''}>${c.name}</option>`).join('')}</select></div><div class="field"><label>Invoice Date</label><input id="f-date" type="date" value="${inv.date}"></div><div class="field"><label>Default Tax %</label><input id="f-tax" type="number" value="${inv.taxPct||0}"></div><div class="field"><label>Due Date</label><input id="f-due" type="date" value="${inv.dueDate}"></div></div><div class="modal-actions">${no?`<span class="btn btn-danger" onclick="deleteInvoice('${no}')">Delete</span>`:''}<span class="btn btn-ghost" onclick="closeModal()">Cancel</span><span class="btn btn-brass" onclick="saveInvoice('${no||''}')">Save</span></div>`)}
+function addSaleLine(){if(!DB.invoices.length){alert('Create an invoice first.');return}if(!DB.items.length){alert('Add an item first.');return}openModal('Add Sales Log Line',`<div class="grid2"><div class="field"><label>Invoice No</label><select id="f-inv">${DB.invoices.map(i=>`<option value="${i.no}">${i.no}</option>`).join('')}</select></div><div class="field"><label>Item</label><select id="f-item" onchange="fillPriceV2()">${DB.items.map(i=>`<option value="${i.id}" data-price="${i.unitPrice}" data-tax="${i.taxPct||0}">${i.name}</option>`).join('')}</select></div><div class="field"><label>Qty</label><input id="f-qty" type="number" value="1" min="1"></div><div class="field"><label>Unit Price</label><input id="f-price" type="number" value="${DB.items[0]?.unitPrice||0}"></div><div class="field"><label>Tax %</label><input id="f-taxline" type="number" value="${DB.items[0]?.taxPct||0}"></div><div class="field"><label>Lot ID (optional)</label><input id="f-lot" placeholder="e.g. PO-1001-1"></div><div class="field"><label>DC No (optional)</label><select id="f-dc"><option value="">Not dispatched yet</option>${DB.deliveries.map(d=>`<option value="${d.no}">${d.no}</option>`).join('')}</select></div></div><div class="field"><small>Available stock: <b id="f-stockhint">${stockOf(DB.items[0]?.id)}</b></small></div><div class="modal-actions"><span class="btn btn-ghost" onclick="closeModal()">Cancel</span><span class="btn btn-brass" onclick="saveSaleLine()">Add</span></div>`);}
+function fillPriceV2(){const s=document.getElementById('f-item'),o=s.options[s.selectedIndex];document.getElementById('f-price').value=o.dataset.price;document.getElementById('f-taxline').value=o.dataset.tax;document.getElementById('f-stockhint').textContent=stockOf(o.value)}
+async function saveSaleLine(){const invoiceNo=val('f-inv'),itemId=val('f-item'),qty=n(val('f-qty')),avail=stockOf(itemId),lotId=val('f-lot').trim(),price=n(val('f-price')),taxPct=n(val('f-taxline'));const inv=DB.invoices.find(i=>i.no===invoiceNo);if(!inv){alert('Select a valid invoice.');return}if(!itemId){alert('Select an item.');return}if(qty<=0){alert('Quantity must be greater than zero.');return}if(price<0){alert('Unit price cannot be negative.');return}if(qty>avail){alert(`Insufficient stock. Available: ${avail}.`);return}if(lotId){const lot=DB.purchaseLog.find(l=>l.lotId===lotId&&l.itemId===itemId);if(!lot){alert(`Lot ID ${lotId} was not found for this item.`);return}const sold=DB.salesLog.filter(x=>x.lotId===lotId).reduce((a,x)=>a+n(x.qty),0);const remaining=Math.max(0,n(lot.qty)-sold);if(qty>remaining){alert(`Insufficient quantity in lot ${lotId}. Remaining: ${remaining}.`);return}}const dcNo=val('f-dc');if(dcNo){const dc=DB.deliveries.find(d=>d.no===dcNo);if(!dc){alert(`Delivery Challan ${dcNo} was not found.`);return}if(dc.custId&&dc.custId!==inv.custId){alert('The Delivery Challan belongs to a different customer.');return}}DB.salesLog.push({invoiceNo,itemId,qty,price,taxPct,lotId,dcNo});await saveDB();closeModal();go(VIEW)}
+
+/* =========================================================
+   PD BILLING V5 — Excel v6 parity + offline-first layer
+   Generated from: 07082026 Invoice Inventory Payment System v6.xlsx
+   ========================================================= */
+const EXCEL_V6_SEED = {"customers":[{"id":"C001","name":"DAHANU DECORE","contact":"BRIJESH","phone":"919890132032","email":"ana@riverside.com","address":"MASSOLI, STAION ROAD, DAHANU","gstin":"GST-4471","whatsapp":"919890132032","openingBalance":0,"asOf":"2026-08-07"},{"id":"C002","name":"DAHANU RADHIKA","contact":"CHINTEN","phone":"917028613568","email":"mo@blueharbor.com","address":"STATION ROAD","gstin":"GST-5582","whatsapp":"917028613568","openingBalance":2850,"asOf":"2026-08-07"},{"id":"C003","name":"CHINCHAN IQBAL","contact":"IQBAL","phone":"919221626999","email":"lena@oakwood.com","address":"CHINCHAN","gstin":"GST-6693","whatsapp":"919221626999","openingBalance":0,"asOf":"2026-08-07"}],"suppliers":[{"id":"S001","name":"TechSource Wholesale","contact":"Raj Mehta","phone":"555-0201","email":"raj@techsource.com","address":"10 Industrial Rd, Andheri, Mumbai","gstin":"GST-7781","whatsapp":"919820500201","openingBalance":0,"asOf":""},{"id":"S002","name":"CablePlus Ltd","contact":"Priya Nair","phone":"555-0202","email":"priya@cableplus.com","address":"22 Cable Ln, Mumbai","gstin":"GST-7782","whatsapp":"919820500202","openingBalance":0,"asOf":""},{"id":"S003","name":"Modern Office Co","contact":"Sunil Rao","phone":"555-0203","email":"sunil@modernoffice.com","address":"7 Office Park, Mumbai","gstin":"GST-7783","whatsapp":"919820500203","openingBalance":0,"asOf":""}],"items":[{"id":"ITM001","name":"Wireless Mouse","category":"Electronics","unit":"pcs","opening":50,"unitCost":12,"unitPrice":8,"reorder":10,"taxPct":0,"image":""},{"id":"ITM002","name":"Mechanical Keyboard","category":"Electronics","unit":"pcs","opening":30,"unitCost":10,"unitPrice":15,"reorder":10,"taxPct":0,"image":""},{"id":"ITM003","name":"USB-C Cable 1m","category":"Accessories","unit":"pcs","opening":200,"unitCost":100,"unitPrice":60,"reorder":10,"taxPct":0,"image":""},{"id":"ITM004","name":"Laptop Stand","category":"Accessories","unit":"pcs","opening":40,"unitCost":0,"unitPrice":5,"reorder":10,"taxPct":0,"image":""},{"id":"ITM005","name":"Office Chair","category":"Furniture","unit":"pcs","opening":15,"unitCost":5,"unitPrice":3,"reorder":10,"taxPct":0,"image":""},{"id":"ITM006","name":"Desk Lamp","category":"Furniture","unit":"pcs","opening":25,"unitCost":0,"unitPrice":10,"reorder":10,"taxPct":0,"image":""}],"purchases":[{"no":"PO-1001","date":"2026-06-01","suppId":"S001","taxPct":0,"dueDate":"2026-07-01"},{"no":"PO-1002","date":"2026-06-05","suppId":"S002","taxPct":0,"dueDate":"2026-07-05"},{"no":"PO-1003","date":"2026-06-10","suppId":"S003","taxPct":0,"dueDate":"2026-07-10"}],"purchaseLog":[{"poNo":"PO-1001","itemId":"ITM001","qty":12,"cost":9.5,"lotId":"PO-1001-1","supplierId":"S001","unitsPerCarton":0},{"poNo":"PO-1001","itemId":"ITM002","qty":10,"cost":38,"lotId":"PO-1001-2","supplierId":"S001","unitsPerCarton":0},{"poNo":"PO-1002","itemId":"ITM003","qty":100,"cost":1.2,"lotId":"PO-1002-1","supplierId":"S002","unitsPerCarton":0},{"poNo":"PO-1003","itemId":"ITM005","qty":5,"cost":95,"lotId":"PO-1003-1","supplierId":"S003","unitsPerCarton":0}],"supplierPayments":[{"id":"SPMT-001","date":"2026-06-15","poNo":"PO-1001","amount":209,"mode":"Bank Transfer","notes":"Paid in full"},{"id":"SPMT-002","date":"2026-06-20","poNo":"PO-1002","amount":60,"mode":"Cheque","notes":"Partial payment"}],"deliveries":[]};
+const EXCEL_SHEET_CHECKLIST = [
+  ['Instructions','Reference / guidance',true],['Dashboard','Live KPIs',true],['Sales Report','Item-wise sales + gross profit',true],
+  ['Purchase Report','Item-wise purchase summary',true],['Aging Report','Customer receivables aging',true],['Product Catalog','Catalog + image slots',true],
+  ['Invoice','Tax invoice document',true],['Delivery Challan','Dispatch document',true],['Payment Receipt','Receipt document',true],
+  ['Outstanding Statement','Customer statement',true],['Purchase Order','PO document',true],['Supplier Outstanding','Supplier statement',true],
+  ['Invoice Register','Invoice ledger',true],['Sales Log','Sales line ledger',true],['Purchase Register','PO ledger',true],
+  ['Purchase Log','Purchase/lot ledger',true],['Inventory','Stock + FIFO/lot reference',true],['Payments','Customer receipts',true],
+  ['Supplier Payments','Supplier payments',true],['Customers','Customer master',true],['Suppliers','Supplier master',true],
+  ['Lot Labels','Printable lot labels',true],['Delivery Register','Dispatch register',true]
+];
+
+function seedDB(){
+  const x=EXCEL_V6_SEED;
+  return {
+    seq:{cust:Math.max(0,...x.customers.map(a=>+String(a.id).replace(/\D/g,'')||0)),supp:Math.max(0,...x.suppliers.map(a=>+String(a.id).replace(/\D/g,'')||0)),item:Math.max(0,...x.items.map(a=>+String(a.id).replace(/\D/g,'')||0)),invoice:1000,po:1003,pay:0,spay:2,dc:1000},
+    customers:x.customers.map(a=>({...a})), suppliers:x.suppliers.map(a=>({...a})), items:x.items.map(a=>({...a,swatch:'#b4863a'})),
+    invoices:[],salesLog:[],purchases:x.purchases.map(a=>({...a})),purchaseLog:x.purchaseLog.map(a=>({...a})),payments:[],supplierPayments:x.supplierPayments.map(a=>({...a})),
+    deliveries:x.deliveries.map(a=>({...a})), settings:{source:'Excel v6',version:'5.0',lastBackup:''}
+  };
+}
+
+/* IndexedDB: persistent on desktop, iPhone and iPad; localStorage fallback. */
+const PDB_DB_NAME='pd-billing-local-v2', PDB_DB_VERSION=1;
+function idbOpen(){return new Promise((res,rej)=>{if(!window.indexedDB)return rej(new Error('IndexedDB unavailable'));const r=indexedDB.open(PDB_DB_NAME,PDB_DB_VERSION);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('kv'))r.result.createObjectStore('kv');};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+async function idbGet(key){const db=await idbOpen();return new Promise((res,rej)=>{const r=db.transaction('kv').objectStore('kv').get(key);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+async function idbSet(key,val){const db=await idbOpen();return new Promise((res,rej)=>{const r=db.transaction('kv','readwrite').objectStore('kv').put(val,key);r.onsuccess=()=>res(true);r.onerror=()=>rej(r.error);});}
+async function loadAll(){
+  try{const d=await idbGet('data');DB=d||seedDB();if(!d)await idbSet('data',DB);}catch(e){try{const s=localStorage.getItem('pdbilling-local-v2');DB=s?JSON.parse(s):seedDB();localStorage.setItem('pdbilling-local-v2',JSON.stringify(DB));}catch(e2){DB=seedDB();}}
+  try{const s=await idbGet('staff');STAFF=s||seedStaff;if(!s)await idbSet('staff',STAFF);}catch(e){STAFF=seedStaff;}
+}
+async function saveDB(){DB.settings=DB.settings||{};DB.settings.lastSaved=new Date().toISOString();try{await idbSet('data',DB);}catch(e){try{localStorage.setItem('pdbilling-local-v2',JSON.stringify(DB));}catch(e2){console.error(e2);}}}
+async function saveStaff(){try{await idbSet('staff',STAFF);}catch(e){}}
+
+function n(v){return Number(v)||0} function dstr(v){return v?String(v).slice(0,10):''}
+function nextDCNo(){DB.seq.dc=(DB.seq.dc||1000)+1;return 'DC-'+DB.seq.dc}
+function nextInvoiceNo(){DB.seq.invoice+=1;return 'INV-'+DB.seq.invoice}
+function nextPONo(){DB.seq.po+=1;return 'PO-'+DB.seq.po}
+function nextCustId(){DB.seq.cust+=1;return 'C'+String(DB.seq.cust).padStart(3,'0')}
+function nextSuppId(){DB.seq.supp+=1;return 'S'+String(DB.seq.supp).padStart(3,'0')}
+function nextItemId(){DB.seq.item+=1;return 'ITM'+String(DB.seq.item).padStart(3,'0')}
+function nextPayId(){DB.seq.pay+=1;return 'PMT-'+String(++DB.seq.pay).padStart(3,'0')}
+function nextSPayId(){DB.seq.spay+=1;return 'SPMT-'+String(++DB.seq.spay).padStart(3,'0')}
+function invoiceLines(no){return DB.salesLog.filter(l=>l.invoiceNo===no)}
+function poLines(no){return DB.purchaseLog.filter(l=>l.poNo===no)}
+function invoiceSubtotal(no){return invoiceLines(no).reduce((s,l)=>s+n(l.qty)*n(l.price),0)}
+function invoiceTax(inv){return round2(invoiceLines(inv.no).reduce((sum,l)=>sum+n(l.qty)*n(l.price)*((l.taxPct??inv.taxPct)/100),0))}
+function invoiceTotal(inv){return round2(invoiceSubtotal(inv.no)+invoiceTax(inv))}
+function invoicePaid(no){return DB.payments.filter(p=>p.invoiceNo===no).reduce((s,p)=>s+n(p.amount),0)}
+function invoiceBalance(inv){return round2(invoiceTotal(inv)-invoicePaid(inv.no))}
+function invoiceStatus(inv){const b=invoiceBalance(inv),p=invoicePaid(inv.no);return b<=.005?'Paid':p===0?'Unpaid':'Partial'}
+function poSubtotal(no){return poLines(no).reduce((s,l)=>s+n(l.qty)*n(l.cost),0)}
+function poTax(po){return round2(poSubtotal(po.no)*n(po.taxPct)/100)}
+function poTotal(po){return round2(poSubtotal(po.no)+poTax(po))}
+function poPaid(no){return DB.supplierPayments.filter(p=>p.poNo===no).reduce((s,p)=>s+n(p.amount),0)}
+function poBalance(po){return round2(poTotal(po)-poPaid(po.no))}
+function poStatus(po){const b=poBalance(po),p=poPaid(po.no);return b<=.005?'Paid':p===0?'Unpaid':'Partial'}
+function stockOf(id){const it=DB.items.find(x=>x.id===id);if(!it)return 0;return n(it.opening)+DB.purchaseLog.filter(l=>l.itemId===id).reduce((s,l)=>s+n(l.qty),0)-DB.salesLog.filter(l=>l.itemId===id).reduce((s,l)=>s+n(l.qty),0)}
+function customerOutstanding(id){const c=DB.customers.find(x=>x.id===id);return round2(n(c?.openingBalance)+DB.invoices.filter(i=>i.custId===id).reduce((s,i)=>s+Math.max(0,invoiceBalance(i)),0))}
+function supplierPayable(id){const s=DB.suppliers.find(x=>x.id===id);return round2(n(s?.openingBalance)+DB.purchases.filter(p=>p.suppId===id).reduce((a,p)=>a+Math.max(0,poBalance(p)),0))}
+
+/* Expanded navigation: all 23 Excel sheets have an app destination or reference screen. */
+const NAV_V2=[
+ {group:'Overview',items:[['dashboard','Dashboard'],['instructions','Instructions'],['checklist','Excel v6 Checklist']]},
+ {group:'Selling',items:[['customers','Customers'],['invoices','Invoice Register'],['sales-log','Sales Log'],['payments','Payments']]},
+ {group:'Buying',items:[['suppliers','Suppliers'],['purchases','Purchase Register'],['purchase-log','Purchase Log'],['supplier-payments','Supplier Payments']]},
+ {group:'Stock',items:[['inventory','Inventory'],['catalog','Product Catalog'],['lots','Lot Labels']]},
+ {group:'Dispatch',items:[['deliveries','Delivery Register']]},
+ {group:'Documents',items:[['doc-invoice','Invoice'],['doc-dc','Delivery Challan'],['doc-po','Purchase Order'],['doc-receipt','Payment Receipt'],['doc-outstanding','Outstanding Statement'],['doc-supp-outstanding','Supplier Outstanding']]},
+ {group:'Reports',items:[['report-sales','Sales Report'],['report-purchase','Purchase Report'],['report-aging','Aging Report']]},
+ {group:'System',items:[['backup','Backup / Restore'],['reconcile','Excel Reconciliation']]}
+];
+
+function statusBar(){return `<span class="status-chip"><i></i>${navigator.onLine?'Online':'Offline'} · data saved on this device</span>`}
+function renderShell(){const sb=document.getElementById('sidebar');sb.innerHTML=`<div class="brand"><div class="tack"></div><div class="brand-text"><div class="name">PD Billing</div><div class="sub">Excel v6 · Offline First</div></div></div>${NAV_V2.map(g=>`<div class="navgroup"><div class="label">${g.group}</div>${g.items.map(([id,label])=>`<div class="navitem" data-nav="${id}" onclick="go('${id}')"><span class="dot"></span>${label}</div>`).join('')}</div>`).join('')}<div class="userbox">Signed in as<br><b>${CURRENT_USER.name}</b> · ${CURRENT_USER.role}</div><div class="logout" onclick="logout()">Switch user</div>`}
+function renderView(id){const titles=Object.fromEntries(NAV_V2.flatMap(g=>g.items));const header=`<div class="topbar"><div style="display:flex;align-items:center;gap:10px"><span id="menu-toggle" class="no-print" style="cursor:pointer;font-size:20px" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</span><h1>${titles[id]||id}</h1></div><div class="stamp">${BIZ.name} · ${statusBar()}</div></div>`;let body='';
+ if(id==='dashboard')body=viewDashboard(); else if(id==='customers')body=viewParties('customers'); else if(id==='suppliers')body=viewParties('suppliers'); else if(id==='invoices')body=viewInvoiceRegister(); else if(id==='sales-log')body=viewSalesLog(); else if(id==='payments')body=viewPayments('payments'); else if(id==='purchases')body=viewPurchaseRegister(); else if(id==='purchase-log')body=viewPurchaseLog(); else if(id==='supplier-payments')body=viewPayments('supplier-payments'); else if(id==='inventory')body=viewInventory(); else if(id==='catalog')body=viewCatalog(); else if(id==='lots')body=viewLots(); else if(id==='deliveries')body=viewDeliveries(); else if(id==='doc-invoice')body=viewDoc('invoice'); else if(id==='doc-dc')body=viewDocDC(); else if(id==='doc-po')body=viewDoc('po'); else if(id==='doc-receipt')body=viewDoc('receipt'); else if(id==='doc-outstanding')body=viewDoc('outstanding'); else if(id==='doc-supp-outstanding')body=viewDoc('supp-outstanding'); else if(id==='report-sales')body=viewReportSales(); else if(id==='report-purchase')body=viewReportPurchase(); else if(id==='report-aging')body=viewReportAging(); else if(id==='instructions')body=viewInstructions(); else if(id==='checklist')body=viewChecklist(); else if(id==='backup')body=viewBackup(); else if(id==='reconcile')body=viewReconcile(); else body=`<div class="card">Module not found.</div>`;return header+body}
+
+function viewCatalog(){const rows=DB.items.map(i=>`<tr><td>${i.image?`<img src="${i.image}" style="width:42px;height:42px;object-fit:contain;border-radius:6px">`:'<span class="image-slot">Image</span>'}</td><td class="mono">${i.id}</td><td>${i.name}</td><td>${i.category}</td><td>${i.unit}</td><td>${fmt(i.unitPrice)}</td><td>${n(i.taxPct)}%</td><td>${n(i.reorder)}</td></tr>`).join('');return `<div class="card"><div class="toolbar"><div>Product Catalog — image slots are stored locally on this device.</div><span class="btn btn-brass btn-sm" onclick="addItem()">+ Add Product</span></div><div class="scrollx"><table class="ledger"><thead><tr><th>Photo</th><th>Item Code</th><th>Item Name</th><th>Category</th><th>Unit</th><th>Selling Price</th><th>Tax</th><th>Reorder</th></tr></thead><tbody>${rows||'<tr><td colspan="8" class="empty">No products.</td></tr>'}</tbody></table></div></div>`}
+function viewLots(){const rows=DB.purchaseLog.map(l=>{const it=DB.items.find(i=>i.id===l.itemId),s=DB.suppliers.find(x=>x.id===l.supplierId);const sold=DB.salesLog.filter(x=>x.lotId===l.lotId).reduce((a,x)=>a+n(x.qty),0);return `<tr><td class="mono">${l.lotId||'—'}</td><td>${it?.name||'—'}</td><td>${l.qty}</td><td>${sold}</td><td>${Math.max(0,n(l.qty)-sold)}</td><td>${s?.name||'—'}</td><td><button class="btn btn-sm btn-ghost" onclick="printLot('${String(l.lotId||'').replace(/'/g,"\\'")}')">Print</button></td></tr>`}).join('');return `<div class="card"><div class="toolbar"><div>Lot labels follow the Excel v6 PO-lot convention.</div><button class="btn btn-brass btn-sm" onclick="printAllLots()">Print All</button></div><div class="scrollx"><table class="ledger"><thead><tr><th>Lot ID</th><th>Item</th><th>Received</th><th>Sold</th><th>Remaining</th><th>Supplier</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="empty">No lots.</td></tr>'}</tbody></table></div></div>`}
+function viewDeliveries(){const rows=DB.deliveries.map(d=>`<tr><td class="mono">${d.no}</td><td>${d.date}</td><td>${d.customer||DB.customers.find(c=>c.id===d.custId)?.name||'—'}</td><td>${d.transport||''}</td><td>${d.vehicle||''}</td><td>${deliveryQty(d.no)}</td><td><span class="pill ok2">Dispatched</span></td><td><button class="btn btn-sm btn-ghost" onclick="viewOneDC('${d.no}')">View</button></td></tr>`).join('');return `<div class="card"><div class="toolbar"><div>Delivery Register — DC number, transport and dispatched quantity.</div><button class="btn btn-brass btn-sm" onclick="addDelivery()">+ New Delivery Challan</button></div><div class="scrollx"><table class="ledger"><thead><tr><th>DC No</th><th>Date</th><th>Customer</th><th>Transport</th><th>Vehicle / Ref</th><th>Qty</th><th>Status</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="8" class="empty">No deliveries.</td></tr>'}</tbody></table></div></div>`}
+function deliveryQty(no){return DB.salesLog.filter(x=>x.dcNo===no).reduce((a,x)=>a+n(x.qty),0)}
+function addDelivery(){openModal('New Delivery Challan',`<div class="grid2"><div class="field"><label>Date</label><input id="f-date" type="date" value="${todayISO()}"></div><div class="field"><label>Customer</label><select id="f-cust">${DB.customers.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select></div><div class="field"><label>Transport Mode</label><input id="f-transport" placeholder="Tempo / Courier / Own Vehicle"></div><div class="field"><label>Vehicle / Transport Ref</label><input id="f-vehicle"></div></div><div class="stitch"></div><div class="field"><label>Dispatch line (optional — select an invoice line)</label><select id="f-line"><option value="">No linked invoice line</option>${DB.salesLog.map((l,i)=>`<option value="${i}">${l.invoiceNo} · ${DB.items.find(x=>x.id===l.itemId)?.name||''} · Qty ${l.qty}</option>`).join('')}</select></div><div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-brass" onclick="saveDelivery()">Save</button></div>`)}
+async function saveDelivery(){const no=nextDCNo(), idx=val('f-line'),custId=val('f-cust');const rec={no,date:val('f-date'),custId,customer:DB.customers.find(c=>c.id===custId)?.name||'',transport:val('f-transport'),vehicle:val('f-vehicle')};if(!custId){alert('Select a customer.');return}if(idx!==''){const line=DB.salesLog[+idx];if(!line){alert('Selected sales line was not found.');return}if(line.dcNo){alert(`This sales line is already dispatched under ${line.dcNo}.`);return}const inv=DB.invoices.find(i=>i.no===line.invoiceNo);if(inv&&inv.custId!==custId){alert('The selected sales line belongs to a different customer.');return}}DB.deliveries.push(rec);if(idx!=='')DB.salesLog[+idx].dcNo=no;await saveDB();closeModal();go('deliveries')}
+function viewDocDC(){return `<div class="card"><div class="field"><label>Delivery Challan</label><select id="doc-dc-select"><option value="">Select DC</option>${DB.deliveries.map(d=>`<option value="${d.no}">${d.no} — ${d.customer}</option>`).join('')}</select></div><button class="btn btn-brass" onclick="const n=document.getElementById('doc-dc-select').value;if(n) viewOneDC(n);">Open</button></div>`}
+function viewOneDC(no){const d=DB.deliveries.find(x=>x.no===no);if(!d)return;const cust=DB.customers.find(c=>c.id===d.custId);const lines=DB.salesLog.filter(x=>x.dcNo===no).map(l=>`<tr><td>${DB.items.find(i=>i.id===l.itemId)?.name||'—'}</td><td>${l.qty}</td></tr>`).join('');document.getElementById('main').innerHTML=`<div class="topbar"><h1>Delivery Challan ${no}</h1><div class="stamp no-print">${statusBar()}</div></div><div class="doc"><div class="doc-head"><div><div class="biz">${BIZ.name}</div><div class="biz-sub">${BIZ.addr}<br>GSTIN: ${BIZ.gstin}</div></div><div class="doctitle"><div class="t">DELIVERY CHALLAN</div><div class="n">${no}</div><div>Date: ${d.date}</div></div></div><p><b>Deliver To:</b> ${cust?.name||d.customer}<br>${cust?.address||''}</p><p><b>Transport:</b> ${d.transport||'—'} &nbsp; <b>Vehicle/Ref:</b> ${d.vehicle||'—'}</p><table class="ledger"><thead><tr><th>Item</th><th>Qty</th></tr></thead><tbody>${lines||'<tr><td colspan="2">No linked lines</td></tr>'}</tbody></table><div class="no-print" style="margin-top:18px"><button class="btn btn-brass" onclick="window.print()">Print</button> <button class="btn btn-ghost" onclick="go('deliveries')">Back</button></div></div>`}
+function printLot(lot){
+  const l=DB.purchaseLog.find(x=>x.lotId===lot); if(!l)return;
+  const it=DB.items.find(i=>i.id===l.itemId);
+  const w=window.open('','_blank'); if(!w){alert('Please allow pop-ups to print the lot label.');return;}
+  const html='<!doctype html><html><head><title>Lot '+lot+'</title><style>body{font-family:Arial;padding:30px}.label{border:2px solid #222;width:280px;padding:20px;text-align:center}.lot{font-size:22px;font-weight:700}</style></head><body><div class="label"><b>PD BILLING</b><h3>PIECE / LOT LABEL</h3><div>'+((it&&it.name)||'')+'</div><div class="lot">'+lot+'</div><div>Qty in lot: '+l.qty+'</div></div></body></html>';
+  w.document.write(html); w.document.close(); w.focus(); setTimeout(()=>w.print(),150);
+}
+
+function printAllLots(){DB.purchaseLog.forEach((l,i)=>setTimeout(()=>printLot(l.lotId),i*300))}
+function viewInstructions(){return `<div class="card"><h3>PD Billing — Excel v6 operating map</h3><p>This app keeps the two mirrored sides from the workbook: <b>Selling</b> (Customers → Invoice Register → Sales Log → Payments → Invoice / Delivery Challan) and <b>Buying</b> (Suppliers → Purchase Register → Purchase Log → Supplier Payments → Purchase Order / Supplier Outstanding).</p><p>Data is stored locally on the device. Internet is not required for billing.</p><div class="stitch"></div><h4>Important</h4><p>Without a cloud/server, each device has its own database. Use Backup / Restore to transfer the database between desktop, iPhone and iPad.</p></div>`}
+function viewChecklist(){const rows=EXCEL_SHEET_CHECKLIST.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td><td><span class="pill ok2">Included</span></td></tr>`).join('');return `<div class="card"><div class="toolbar"><div><b>Excel v6 conversion checklist</b><br><small>Coverage checklist; business reconciliation is still a separate test step.</small></div></div><table class="ledger"><thead><tr><th>Excel sheet</th><th>Function</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`}
+function viewReconcile(){
+  const purchaseTotal=round2(DB.purchases.reduce((a,p)=>a+poTotal(p),0));
+  const supplierPayableTotal=round2(DB.suppliers.reduce((a,s)=>a+supplierPayable(s.id),0));
+  const inventoryQty=DB.items.map(i=>({id:i.id,name:i.name,stock:stockOf(i.id)}));
+  const inventoryValue=round2(DB.items.reduce((a,i)=>a+stockOf(i.id)*n(i.unitCost),0));
+  const openingCustomer=round2(DB.customers.reduce((a,c)=>a+n(c.openingBalance),0));
+  const checks=[
+    ['Excel v6 purchase total','₹1,089.00',fmt(purchaseTotal),Math.abs(purchaseTotal-1089)<0.005],
+    ['Excel v6 supplier payable','₹820.00',fmt(supplierPayableTotal),Math.abs(supplierPayableTotal-820)<0.005],
+    ['Excel v6 customer opening receivable','₹2,850.00',fmt(openingCustomer),Math.abs(openingCustomer-2850)<0.005],
+    ['Excel v6 inventory quantity: ITM001','62',String(inventoryQty.find(x=>x.id==='ITM001')?.stock??''),inventoryQty.find(x=>x.id==='ITM001')?.stock===62],
+    ['Excel v6 inventory quantity: ITM002','40',String(inventoryQty.find(x=>x.id==='ITM002')?.stock??''),inventoryQty.find(x=>x.id==='ITM002')?.stock===40],
+    ['Excel v6 inventory quantity: ITM003','300',String(inventoryQty.find(x=>x.id==='ITM003')?.stock??''),inventoryQty.find(x=>x.id==='ITM003')?.stock===300],
+    ['Excel v6 inventory quantity: ITM005','20',String(inventoryQty.find(x=>x.id==='ITM005')?.stock??''),inventoryQty.find(x=>x.id==='ITM005')?.stock===20],
+    ['Excel v6 inventory value at cost','₹31,244.00',fmt(inventoryValue),Math.abs(inventoryValue-31244)<0.005]
+  ];
+  const rows=checks.map(c=>`<tr><td>${c[0]}</td><td>${c[1]}</td><td>${c[2]}</td><td><span class="pill ${c[3]?'ok2':'bad'}">${c[3]?'PASS':'CHECK'}</span></td></tr>`).join('');
+  return `<div class="card"><div class="toolbar"><div><b>Excel v6 baseline reconciliation</b><br><small>These checks compare the app's seeded Excel-v6 data model with the baseline values calculated from the workbook.</small></div><span class="status-chip"><i></i>${checks.every(c=>c[3])?'All baseline checks passed':'One or more checks need review'}</span></div><div class="scrollx"><table class="ledger"><thead><tr><th>Check</th><th>Excel baseline</th><th>App</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div><div class="stitch"></div><p><b>Important:</b> this is a baseline reconciliation, not a claim that every Excel formula has been reproduced. In Excel v6, the Dashboard's <b>Total Invoices</b> uses COUNTIF over formula-filled cells, so its cached value is 60 even though the invoice register has no actual invoice records. The app deliberately counts actual invoice records instead of reproducing that spreadsheet artefact. Inventory value at cost is ₹31,244 and retail value is ₹19,606 for the v6 baseline.</p></div>`;
+}
+
+function viewBackup(){return `<div class="card"><h3>Backup / Restore</h3><p>Creates a complete local JSON backup. No cloud account is required.</p><div class="toolbar"><button class="btn btn-brass" onclick="exportBackup()">Export Backup</button><label class="btn btn-ghost" style="cursor:pointer">Import Backup<input id="restore-file" type="file" accept="application/json,.json" style="display:none" onchange="importBackup(event)"></label></div><div class="stitch"></div><p><b>Last saved:</b> ${DB.settings?.lastSaved||'—'}<br><b>Source:</b> ${DB.settings?.source||'Local'}</p></div>`}
+function exportBackup(){const copy=JSON.parse(JSON.stringify(DB));copy.settings=copy.settings||{};copy.settings.exportedAt=new Date().toISOString();const blob=new Blob([JSON.stringify(copy,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='PD-Billing-Backup-'+todayISO()+'.json';a.click();URL.revokeObjectURL(a.href)}
+async function importBackup(e){const f=e.target.files?.[0];if(!f)return;try{const obj=JSON.parse(await f.text());const required=['customers','suppliers','items','invoices','salesLog','payments','purchases','purchaseLog','supplierPayments','deliveries'];if(!required.every(k=>Array.isArray(obj[k])))throw Error('Invalid PD Billing backup: required data tables are missing.');obj.settings=obj.settings||{};obj.settings.source='Imported backup';obj.settings.importedAt=new Date().toISOString();if(!confirm('Restore this backup and replace the current data on this device?'))return;DB=obj;await saveDB();alert('Backup restored successfully.');go('dashboard')}catch(err){alert('Could not restore backup: '+err.message)}}
+
+window.addEventListener('online',()=>{if(VIEW)go(VIEW)});window.addEventListener('offline',()=>{if(VIEW)go(VIEW)});
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}
+
+</script>
+</body>
+</html>
+</body>
+</html>
