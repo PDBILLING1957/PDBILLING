@@ -450,13 +450,29 @@ function boot(){
    ========================================================= */
 
 const NAV = [
-  { group:"Overview", items:[["dashboard","Dashboard"]] },
-  { group:"Selling", items:[["customers","Customers"],["invoices","Invoice Register"],["sales-log","Sales Log"],["payments","Payments"]] },
-  { group:"Buying", items:[["suppliers","Suppliers"],["purchases","Purchase Register"],["purchase-log","Purchase Log"],["goods-receipt","Goods Receipt / Acceptance"],["supplier-payments","Supplier Payments"]] },
-  { group:"Stock", items:[["inventory","Inventory"]] },
-  { group:"Documents", items:[["doc-invoice","Invoice"],["doc-po","Purchase Order"],["doc-receipt","Payment Receipt"],["doc-outstanding","Outstanding Statement"],["doc-supp-outstanding","Supplier Outstanding"]] },
-  { group:"Reports", items:[["report-sales","Sales Report"],["report-purchase","Purchase Report"],["report-aging","Aging Report"]] },
+  { group:"MAIN", items:[
+    ["sale","SALE"],["purchase","PURCHASE"],["inventory-section","INVENTORY"],["finance","FINANCE"],["report","REPORT"],["backup","DATA BACKUP"]
+  ]},
 ];
+
+const SUBNAV = {
+  sale:[
+    ["customers","Customers"],["invoices","Invoice Register"],["sales-log","Sales Items"],["payments","Customer Payments"],
+    ["doc-invoice","Invoice"],["doc-receipt","Payment Receipt"],["doc-outstanding","Customer Outstanding"]
+  ],
+  purchase:[
+    ["suppliers","Suppliers"],["purchases","Purchase Register"],["purchase-log","Purchase Items"],["goods-receipt","Goods Receipt / Acceptance"],
+    ["supplier-payments","Supplier Payments"],["doc-po","Purchase Order"],["doc-supp-outstanding","Supplier Outstanding"]
+  ],
+  "inventory-section":[["inventory","Current Stock"]],
+  finance:[
+    ["payments","Customer Receipts"],["supplier-payments","Supplier Payments"],["doc-outstanding","Receivables"],["doc-supp-outstanding","Payables"]
+  ],
+  report:[
+    ["report-sales","Sales Report"],["report-purchase","Purchase Report"],["report-aging","Aging Report"]
+  ],
+  backup:[["backup","Data Backup & Restore"]]
+};
 
 function renderShell(){
   const sb = document.getElementById("sidebar");
@@ -464,18 +480,18 @@ function renderShell(){
     <div class="brand"><div class="tack"></div>
       <div class="brand-text"><div class="name">PD Billing</div><div class="sub">Malad West, Mumbai</div></div>
     </div>
-    ${NAV.map(g=>`
-      <div class="navgroup">
-        <div class="label">${g.group}</div>
-        ${g.items.map(([id,label])=>`<div class="navitem" data-nav="${id}" onclick="go('${id}')"><span class="dot"></span>${label}</div>`).join("")}
-      </div>`).join("")}
+    <div class="navgroup">
+      ${NAV[0].items.map(([id,label])=>`<div class="navitem nav-main" data-nav="${id}" onclick="go('${id}')"><span class="dot"></span>${label}</div>`).join("")}
+    </div>
     <div class="userbox">Signed in as<br><b>${CURRENT_USER.name}</b> · ${CURRENT_USER.role}</div>
     <div class="logout" onclick="logout()">Switch user</div>
   `;
 }
 
 function markActive(id){
-  document.querySelectorAll(".navitem").forEach(el=>el.classList.toggle("active", el.dataset.nav===id));
+  const parent = Object.keys(SUBNAV).find(k => (SUBNAV[k]||[]).some(x=>x[0]===id));
+  const active = parent || id;
+  document.querySelectorAll(".navitem").forEach(el=>el.classList.toggle("active", el.dataset.nav===active));
 }
 
 function go(id){
@@ -515,6 +531,12 @@ function renderView(id){
   </div>`;
   let body = "";
   if (id==="dashboard") body = viewDashboard();
+  else if (id==="sale") body = viewSectionHome("sale");
+  else if (id==="purchase") body = viewSectionHome("purchase");
+  else if (id==="inventory-section") body = viewSectionHome("inventory-section");
+  else if (id==="finance") body = viewSectionHome("finance");
+  else if (id==="report") body = viewSectionHome("report");
+  else if (id==="backup") body = viewBackup();
   else if (id==="customers") body = viewParties("customers");
   else if (id==="suppliers") body = viewParties("suppliers");
   else if (id==="inventory") body = viewInventory();
@@ -534,6 +556,55 @@ function renderView(id){
   else if (id==="report-purchase") body = viewReportPurchase();
   else if (id==="report-aging") body = viewReportAging();
   return header + body;
+}
+
+/* =========================================================
+   CONSOLIDATED MAIN SECTIONS
+   ========================================================= */
+function viewSectionHome(section){
+  const names={sale:"SALE",purchase:"PURCHASE","inventory-section":"INVENTORY",finance:"FINANCE",report:"REPORT"};
+  const links=SUBNAV[section]||[];
+  const intro={
+    sale:"All customer selling, invoicing, delivery and receipt activities.",
+    purchase:"Complete purchase cycle from supplier and PO through receipt, acceptance, return and payable.",
+    "inventory-section":"Accepted/saleable stock, stock control and inventory operations.",
+    finance:"Current receivables, payables and payment activities. Full accounting can be added later.",
+    report:"Management reports for sales, purchases, ageing and business performance."
+  }[section]||"";
+  return `<div class="card">
+    <h2 style="margin:0 0 6px;">${names[section]}</h2>
+    <div style="font-size:12px;color:#8a7f68;margin-bottom:18px;">${intro}</div>
+    <div class="grid2">
+      ${links.map(([id,label])=>`<div class="card" style="margin:0;cursor:pointer;" onclick="go('${id}')"><div style="font-weight:700;">${label}</div><div style="font-size:11px;color:#8a7f68;margin-top:4px;">Open</div></div>`).join("")}
+    </div>
+  </div>`;
+}
+
+function viewBackup(){
+  return `<div class="card" style="max-width:720px;">
+    <h2 style="margin-top:0;">Data Backup & Restore</h2>
+    <p style="font-size:12px;color:#8a7f68;">Backup stores the current PD Billing data as a JSON file. Restore replaces the current local data only after confirmation.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+      <span class="btn btn-brass" onclick="downloadBackup()">Download Backup</span>
+      <label class="btn btn-ghost" style="cursor:pointer;">Restore Backup<input id="restore-file" type="file" accept="application/json,.json" style="display:none" onchange="restoreBackup(event)"></label>
+    </div>
+    <div id="backup-status" style="font-size:12px;color:#8a7f68;margin-top:14px;"></div>
+  </div>`;
+}
+function downloadBackup(){
+  const payload={app:"PD Billing",version:"working",exportedAt:new Date().toISOString(),data:DB};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`PD-Billing-Backup-${todayISO()}.json`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  const el=document.getElementById("backup-status"); if(el) el.textContent="Backup downloaded successfully.";
+}
+async function restoreBackup(event){
+  const file=event.target.files&&event.target.files[0]; if(!file)return;
+  try{
+    const text=await file.text(); const payload=JSON.parse(text); const data=payload&&payload.data;
+    if(!data || !Array.isArray(data.items) || !Array.isArray(data.customers) || !Array.isArray(data.suppliers)) throw new Error("Invalid backup format");
+    if(!confirm("Restore this backup? Current local data will be replaced.")) return;
+    DB=data; await saveDB(); alert("Backup restored successfully. The app will reload."); location.reload();
+  }catch(e){ alert("Restore failed: invalid or damaged backup file."); }
 }
 
 /* =========================================================
@@ -565,7 +636,7 @@ function viewDashboard(){
       ${kpi("Total Purchases (incl. tax)", fmt(totalPurchases))}
       ${kpi("Total Payable (to suppliers)", fmt(totalPayable), totalPayable>0?"warn":"")}
       ${kpi("Inventory Value (at cost)", fmt(invAtCost))}
-      ${kpi("Inventory Value (at retail)", fmt(invAtRetail))}
+      ${kpi("Inventory Value (at selling price)", fmt(invAtRetail))}
     </div>
     <div class="card" style="font-size:12.5px;color:#8a7f68;">Tip: open <b>Inventory</b> and sort by Stock Status to see everything at or below its reorder level.</div>
   `;
@@ -657,30 +728,12 @@ async function deleteParty(kind, id){
 
 function viewInventory(){
   const rows = DB.items.map(it=>{
-    const stock = stockOf(it.id);
-    const low = stock<=it.reorder;
-    return `<tr>
-      <td class="mono">${it.id}</td>
-      <td><span class="swatch" style="background:${it.swatch}"></span>${it.name}</td>
-      <td>${it.category}</td>
-      <td>${fmt(it.unitCost)}</td>
-      <td>${fmt(it.unitPrice)}</td>
-      <td style="font-weight:700;">${stock}</td>
-      <td>${it.reorder}</td>
-      <td><span class="pill ${low?'low':'ok2'}">${low?'Reorder':'OK'}</span></td>
-      <td class="no-print"><span class="btn btn-sm btn-ghost" onclick="editItem('${it.id}')">Edit</span></td>
-    </tr>`;
+    const stock = stockOf(it.id); const low = stock<=it.reorder;
+    const costValue=stock*it.unitCost, saleValue=stock*it.unitPrice, potential=saleValue-costValue;
+    return `<tr><td class="mono">${it.id}</td><td><span class="swatch" style="background:${it.swatch}"></span>${it.name}</td><td>${it.category}</td><td>${fmt(it.unitCost)}</td><td>${fmt(costValue)}</td><td>${fmt(it.unitPrice)}</td><td>${fmt(saleValue)}</td><td style="font-weight:700;">${stock}</td><td>${fmt(potential)}</td><td>${it.reorder}</td><td><span class="pill ${low?'low':'ok2'}">${low?'Reorder':'OK'}</span></td><td class="no-print"><span class="btn btn-sm btn-ghost" onclick="editItem('${it.id}')">Edit</span></td></tr>`;
   }).join("");
-  return `
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;" class="no-print">
-        <div style="font-size:12px;color:#8a7f68;">Current Stock = Opening + Purchased − Sold, live.</div>
-        <span class="btn btn-brass btn-sm" onclick="editItem(null)">+ Add Item</span>
-      </div>
-      <div class="scrollx"><table class="ledger"><thead><tr>
-        <th>Code</th><th>Item</th><th>Category</th><th>Unit Cost</th><th>Unit Price</th><th>Stock</th><th>Reorder Lvl</th><th>Status</th><th></th>
-      </tr></thead><tbody>${rows || `<tr><td colspan="9" class="empty">No items yet.</td></tr>`}</tbody></table></div>
-    </div>`;
+  const totalCost=DB.items.reduce((s,it)=>s+stockOf(it.id)*it.unitCost,0), totalSale=DB.items.reduce((s,it)=>s+stockOf(it.id)*it.unitPrice,0), totalPotential=totalSale-totalCost;
+  return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;" class="no-print"><div style="font-size:12px;color:#8a7f68;">Only accepted/saleable stock is included. Valuation is live.</div><span class="btn btn-brass btn-sm" onclick="editItem(null)">+ Add Item</span></div><div class="scrollx"><table class="ledger"><thead><tr><th>Code</th><th>Item</th><th>Category</th><th>Unit Cost</th><th>Stock Value at Cost</th><th>Unit Selling Price</th><th>Stock Value at Selling Price</th><th>Qty</th><th>Potential Gross Profit</th><th>Reorder</th><th>Status</th><th></th></tr></thead><tbody>${rows||`<tr><td colspan="12" class="empty">No items yet.</td></tr>`}<tr style="font-weight:700;"><td colspan="4">GRAND TOTAL</td><td>${fmt(totalCost)}</td><td></td><td>${fmt(totalSale)}</td><td></td><td>${fmt(totalPotential)}</td><td colspan="3"></td></tr></tbody></table></div></div>`;
 }
 function editItem(id){
   const it = id ? DB.items.find(i=>i.id===id) : { id:null,name:"",category:"",unitCost:0,unitPrice:0,opening:0,reorder:5,swatch:"#b4863a" };
@@ -799,7 +852,7 @@ function viewSalesLog(){
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;" class="no-print">
         <div style="font-size:12px;color:#8a7f68;">One row per item sold. Reduces Inventory stock automatically.</div>
-        <span class="btn btn-brass btn-sm" onclick="addSaleLine()">+ Add Line</span>
+        <span class="btn btn-brass btn-sm" onclick="addSaleLine()">+ Add Item</span>
       </div>
       <div class="scrollx"><table class="ledger"><thead><tr>
         <th>Invoice No</th><th>Item</th><th>Qty</th><th>Unit Price</th><th>Line Total</th><th></th>
@@ -911,13 +964,21 @@ async function deletePayment(kind, idx){
    ========================================================= */
 
 function viewPurchaseRegister(){
+  ensurePurchaseReceipts();
   const rows = [...DB.purchases].sort((a,b)=>b.no.localeCompare(a.no,undefined,{numeric:true})).map(po=>{
     const supp = DB.suppliers.find(s=>s.id===po.suppId);
-    const status = poStatus(po);
+    const lines=poLines(po.no);
+    const ordered=lines.reduce((s,l)=>s+l.qty,0);
+    const received=lines.reduce((s,l)=>s+purchaseReceivedQty(po.no,l.itemId),0);
+    const accepted=lines.reduce((s,l)=>s+purchaseAcceptedQty(po.no,l.itemId),0);
+    const rejected=Math.max(0,received-accepted);
+    const returnedValue=purchaseReturnValue(po.no);
+    const status = rejected>0 ? "Return" : (received>0 && accepted<ordered ? "Partial" : poStatus(po));
     return `<tr>
       <td class="mono">${po.no}</td><td>${po.date}</td><td>${supp?supp.name:'—'}</td>
+      <td>${ordered}</td><td>${received}</td><td>${accepted}</td><td>${rejected}</td>
       <td>${fmt(poSubtotal(po.no))}</td><td>${po.taxPct}%</td><td>${fmt(poTotal(po))}</td>
-      <td>${fmt(poPaid(po.no))}</td><td style="font-weight:700;">${fmt(poBalance(po))}</td>
+      <td>${fmt(returnedValue)}</td><td>${fmt(poPaid(po.no))}</td><td style="font-weight:700;">${fmt(poBalance(po))}</td>
       <td><span class="pill ${status.toLowerCase()}">${status}</span></td>
       <td class="no-print"><span class="btn btn-sm btn-ghost" onclick="editPO('${po.no}')">Edit</span></td>
     </tr>`;
@@ -925,12 +986,12 @@ function viewPurchaseRegister(){
   return `
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;" class="no-print">
-        <div style="font-size:12px;color:#8a7f68;">PO No fills in automatically. Add line items on the Purchase Log.</div>
+        <div style="font-size:12px;color:#8a7f68;">Complete purchase control centre: order → receipt → acceptance → return → payable.</div>
         <span class="btn btn-brass btn-sm" onclick="editPO(null)">+ New Purchase Order</span>
       </div>
       <div class="scrollx"><table class="ledger"><thead><tr>
-        <th>PO No</th><th>Date</th><th>Supplier</th><th>Subtotal</th><th>Tax</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th></th>
-      </tr></thead><tbody>${rows || `<tr><td colspan="10" class="empty">No purchase orders yet.</td></tr>`}</tbody></table></div>
+        <th>PO No</th><th>Date</th><th>Supplier</th><th>Ordered</th><th>Received</th><th>Accepted</th><th>Rejected</th><th>Subtotal</th><th>Tax</th><th>Total</th><th>Return/Credit</th><th>Paid</th><th>Balance</th><th>Status</th><th></th>
+      </tr></thead><tbody>${rows || `<tr><td colspan="15" class="empty">No purchase orders yet.</td></tr>`}</tbody></table></div>
     </div>`;
 }
 function editPO(no){
