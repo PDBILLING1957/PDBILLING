@@ -303,7 +303,16 @@ function poSubtotal(no){ return poLines(no).reduce((s,l)=>s+l.qty*l.cost,0); }
 function poTax(po){ return round2(poSubtotal(po.no) * (po.taxPct/100)); }
 function poTotal(po){ return poSubtotal(po.no) + poTax(po); }
 function poPaid(no){ return DB.supplierPayments.filter(p=>p.poNo===no).reduce((s,p)=>s+p.amount,0); }
-function poBalance(po){ return round2(poTotal(po) - poPaid(po.no)); }
+function purchaseReturnValue(poNo){
+  const po = DB.purchases.find(p=>p.no===poNo);
+  if (!po) return 0;
+  return round2((DB.purchaseReceipts||[]).filter(r=>r.poNo===poNo).reduce((s,r)=>{
+    const line = DB.purchaseLog.find(l=>l.poNo===poNo && l.itemId===r.itemId);
+    const base = (parseFloat(r.rejectedQty)||0) * (line ? parseFloat(line.cost)||0 : 0);
+    return s + base + round2(base * ((parseFloat(po.taxPct)||0)/100));
+  },0));
+}
+function poBalance(po){ return round2(Math.max(0, poTotal(po) - poPaid(po.no) - purchaseReturnValue(po.no))); }
 function poStatus(po){
   const bal = poBalance(po), paid = poPaid(po.no);
   if (bal<=0.005) return "Paid";
@@ -314,9 +323,27 @@ function poStatus(po){
 function stockOf(itemId){
   const item = DB.items.find(i=>i.id===itemId);
   if (!item) return 0;
-  const purchased = DB.purchaseLog.filter(l=>l.itemId===itemId).reduce((s,l)=>s+l.qty,0);
+  // Stock means physically received AND accepted/saleable goods only.
+  const accepted = (DB.purchaseReceipts||[]).filter(r=>r.itemId===itemId && r.status==="accepted")
+    .reduce((s,r)=>s+(parseFloat(r.acceptedQty)||0),0);
   const sold = DB.salesLog.filter(l=>l.itemId===itemId).reduce((s,l)=>s+l.qty,0);
-  return item.opening + purchased - sold;
+  const adjustments = (DB.stockAdjustments||[]).filter(a=>a.itemId===itemId)
+    .reduce((s,a)=>s+(parseFloat(a.qty)||0),0);
+  return item.opening + accepted + adjustments - sold;
+}
+
+function ensurePurchaseReceipts(){
+  if(!DB.purchaseReceipts) DB.purchaseReceipts=[];
+  if(!DB.stockAdjustments) DB.stockAdjustments=[];
+}
+
+function purchaseReceivedQty(poNo,itemId){
+  return (DB.purchaseReceipts||[]).filter(r=>r.poNo===poNo&&r.itemId===itemId)
+    .reduce((s,r)=>s+(parseFloat(r.receivedQty)||0),0);
+}
+function purchaseAcceptedQty(poNo,itemId){
+  return (DB.purchaseReceipts||[]).filter(r=>r.poNo===poNo&&r.itemId===itemId&&r.status==="accepted")
+    .reduce((s,r)=>s+(parseFloat(r.acceptedQty)||0),0);
 }
 
 function customerOutstanding(custId){
@@ -425,7 +452,7 @@ function boot(){
 const NAV = [
   { group:"Overview", items:[["dashboard","Dashboard"]] },
   { group:"Selling", items:[["customers","Customers"],["invoices","Invoice Register"],["sales-log","Sales Log"],["payments","Payments"]] },
-  { group:"Buying", items:[["suppliers","Suppliers"],["purchases","Purchase Register"],["purchase-log","Purchase Log"],["supplier-payments","Supplier Payments"]] },
+  { group:"Buying", items:[["suppliers","Suppliers"],["purchases","Purchase Register"],["purchase-log","Purchase Log"],["goods-receipt","Goods Receipt / Acceptance"],["supplier-payments","Supplier Payments"]] },
   { group:"Stock", items:[["inventory","Inventory"]] },
   { group:"Documents", items:[["doc-invoice","Invoice"],["doc-po","Purchase Order"],["doc-receipt","Payment Receipt"],["doc-outstanding","Outstanding Statement"],["doc-supp-outstanding","Supplier Outstanding"]] },
   { group:"Reports", items:[["report-sales","Sales Report"],["report-purchase","Purchase Report"],["report-aging","Aging Report"]] },
@@ -496,6 +523,7 @@ function renderView(id){
   else if (id==="payments") body = viewPayments("payments");
   else if (id==="purchases") body = viewPurchaseRegister();
   else if (id==="purchase-log") body = viewPurchaseLog();
+  else if (id==="goods-receipt") body = viewGoodsReceipt();
   else if (id==="supplier-payments") body = viewPayments("supplier-payments");
   else if (id==="doc-invoice") body = viewDoc("invoice");
   else if (id==="doc-po") body = viewDoc("po");
@@ -948,8 +976,8 @@ function viewPurchaseLog(){
   return `
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;" class="no-print">
-        <div style="font-size:12px;color:#8a7f68;">One row per item bought. Increases Inventory stock automatically.</div>
-        <span class="btn btn-brass btn-sm" onclick="addPurchaseLine()">+ Add Line</span>
+        <div style="font-size:12px;color:#8a7f68;">One row per item bought. Creates the purchase record only. Stock increases only after physical receipt and acceptance.</div>
+        <span class="btn btn-brass btn-sm" onclick="addPurchaseLine()">+ Add Item</span>
       </div>
       <div class="scrollx"><table class="ledger"><thead><tr>
         <th>PO No</th><th>Item</th><th>Qty</th><th>Unit Cost</th><th>Line Total</th><th></th>
@@ -959,7 +987,7 @@ function viewPurchaseLog(){
 function addPurchaseLine(){
   if (!DB.purchases.length){ alert("Create a purchase order first."); return; }
   if (!DB.items.length){ alert("Add an item first (Inventory)."); return; }
-  openModal("Add Purchase Log Line", `
+  openModal("Add Purchase Item", `
     <div class="grid2">
       <div class="field"><label>PO No</label><select id="f-po">${DB.purchases.map(p=>`<option value="${p.no}">${p.no}</option>`).join("")}</select></div>
       <div class="field"><label>Item</label><select id="f-item" onchange="fillCost()">${DB.items.map(i=>`<option value="${i.id}" data-cost="${i.unitCost}">${i.name}</option>`).join("")}</select></div>
@@ -984,6 +1012,72 @@ async function savePurchaseLine(){
 async function deletePurchaseLine(idx){
   if (!confirm("Remove this line?")) return;
   DB.purchaseLog.splice(idx,1);
+  await saveDB(); closeModal(); go(VIEW);
+}
+
+/* =========================================================
+   GOODS RECEIPT / ACCEPTANCE
+   ========================================================= */
+function viewGoodsReceipt(){
+  ensurePurchaseReceipts();
+  const rows = [...DB.purchaseReceipts].reverse().map(r=>{
+    const item=DB.items.find(i=>i.id===r.itemId), po=DB.purchases.find(p=>p.no===r.poNo);
+    return `<tr><td class="mono">${r.poNo}</td><td>${item?item.name:'—'}</td><td>${r.receiptDate||'—'}</td><td>${r.receivedQty}</td><td>${r.acceptedQty}</td><td>${r.rejectedQty}</td><td>${r.rejectedQty>0?'Return recorded':'—'}</td></tr>`;
+  }).join('');
+  return `<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;" class="no-print">
+      <div style="font-size:12px;color:#8a7f68;">PO does not create stock. Only accepted/saleable quantity enters Inventory.</div>
+      <span class="btn btn-brass btn-sm" onclick="addGoodsReceipt()">+ Receive / Accept Goods</span>
+    </div>
+    <div class="scrollx"><table class="ledger"><thead><tr><th>PO No</th><th>Item</th><th>Receipt Date</th><th>Received</th><th>Accepted</th><th>Rejected</th><th>Return</th></tr></thead><tbody>${rows||`<tr><td colspan="7" class="empty">No physical receipts recorded yet.</td></tr>`}</tbody></table></div>
+  </div>`;
+}
+function addGoodsReceipt(){
+  ensurePurchaseReceipts();
+  const pos=DB.purchases.filter(p=>DB.purchaseLog.some(l=>l.poNo===p.no));
+  if(!pos.length){ alert('Create a purchase order and add purchase items first.'); return; }
+  openModal('Physical Receipt / Acceptance', `<div class="grid2">
+    <div class="field"><label>PO No</label><select id="f-gr-po" onchange="refreshGRItems()">${pos.map(p=>`<option value="${p.no}">${p.no}</option>`).join('')}</select></div>
+    <div class="field"><label>Item</label><select id="f-gr-item" onchange="refreshGRQty()"></select></div>
+    <div class="field"><label>Physical Receipt Date</label><input id="f-gr-date" type="date" value="${todayISO()}"></div>
+    <div class="field"><label>Physically Received Qty</label><input id="f-gr-received" type="number" min="0" value="0" oninput="syncGRRejected()"></div>
+    <div class="field"><label>Accepted / Saleable Qty</label><input id="f-gr-accepted" type="number" min="0" value="0" oninput="syncGRRejected()"></div>
+    <div class="field"><label>Rejected / Return Qty</label><input id="f-gr-rejected" type="number" min="0" value="0" readonly></div>
+    <div class="field" style="grid-column:1/-1"><label>Inspection / Return Reason</label><input id="f-gr-reason" placeholder="Required when any quantity is rejected"></div>
+  </div>
+  <div style="font-size:12px;color:#8a7f68;margin:8px 0 14px;">Accepted quantity becomes Stock. Rejected quantity is treated as supplier return and reduces supplier payable, including PO tax.</div>
+  <div style="display:flex;gap:10px;justify-content:flex-end;"><span class="btn btn-ghost" onclick="closeModal()">Cancel</span><span class="btn btn-brass" onclick="saveGoodsReceipt()">Save Receipt / Acceptance</span></div>`);
+  refreshGRItems();
+}
+function refreshGRItems(){
+  const poNo=val('f-gr-po'), sel=document.getElementById('f-gr-item'); if(!sel)return;
+  const lines=DB.purchaseLog.filter(l=>l.poNo===poNo);
+  sel.innerHTML=lines.map(l=>{const it=DB.items.find(i=>i.id===l.itemId);return `<option value="${l.itemId}">${it?it.name:l.itemId}</option>`}).join('');
+  refreshGRQty();
+}
+function refreshGRQty(){
+  const poNo=val('f-gr-po'), itemId=val('f-gr-item'); if(!itemId)return;
+  const line=DB.purchaseLog.find(l=>l.poNo===poNo&&l.itemId===itemId);
+  const already=purchaseReceivedQty(poNo,itemId), remaining=Math.max(0,(line?line.qty:0)-already);
+  document.getElementById('f-gr-received').value=remaining;
+  document.getElementById('f-gr-accepted').value=remaining;
+  syncGRRejected();
+}
+function syncGRRejected(){
+  const r=Math.max(0,parseFloat(val('f-gr-received'))||0), a=Math.max(0,parseFloat(val('f-gr-accepted'))||0);
+  document.getElementById('f-gr-rejected').value=Math.max(0,r-a);
+}
+async function saveGoodsReceipt(){
+  ensurePurchaseReceipts();
+  const poNo=val('f-gr-po'), itemId=val('f-gr-item');
+  const line=DB.purchaseLog.find(l=>l.poNo===poNo&&l.itemId===itemId); if(!line)return;
+  const received=Math.max(0,parseFloat(val('f-gr-received'))||0), accepted=Math.max(0,parseFloat(val('f-gr-accepted'))||0), rejected=Math.max(0,received-accepted);
+  const remaining=Math.max(0,line.qty-purchaseReceivedQty(poNo,itemId));
+  if(received<=0){alert('Enter physically received quantity.');return;}
+  if(received>remaining+0.0001){alert(`Received quantity cannot exceed the remaining ordered quantity of ${remaining}.`);return;}
+  if(accepted>received){alert('Accepted quantity cannot exceed physically received quantity.');return;}
+  if(rejected>0 && !val('f-gr-reason').trim()){alert('Enter the reason for rejected / return quantity.');return;}
+  DB.purchaseReceipts.push({poNo,itemId,receiptDate:val('f-gr-date'),receivedQty:received,acceptedQty:accepted,rejectedQty:rejected,reason:val('f-gr-reason').trim(),status:'accepted'});
   await saveDB(); closeModal(); go(VIEW);
 }
 
